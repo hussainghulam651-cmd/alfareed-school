@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>AL-FAREED PUBLIC SCHOOL — Management System</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Firebase SDKs (Compat version - works in local files) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+
+// ═══════════════════════════════════
+// 🔥 FIREBASE CONFIG
+// ═══════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyCNS7AiSghueYGpkEAaMvFhwQ0Wh5tgyRM",
+  authDomain: "studio-9727864536-73c7c.firebaseapp.com",
+  projectId: "studio-9727864536-73c7c",
+  storageBucket: "studio-9727864536-73c7c.firebasestorage.app",
+  messagingSenderId: "1055942529260",
+  appId: "1:1055942529260:web:1bc8d82c8f202b9561d5c9"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ═══════════════════════════════════
+// 🔐 PERMISSIONS
+// ═══════════════════════════════════
+const PERMISSIONS = {
+  admin: { canAdd:true, canEdit:true, canDelete:true, canDownload:true,
+    canRevokeDownload:true, canViewAll:true, canSendWhatsApp:true,
+    canCreateExam:true, canManageTeachers:true, canManageFees:true, canGrantPermissions:true },
+  teacher: { canAdd:false, canEdit:false, canDelete:false, canDownload:false,
+    canRevokeDownload:false, canViewAll:false, canSendWhatsApp:false,
+    canCreateExam:false, canManageTeachers:false, canManageFees:false, canGrantPermissions:false, viewOnly:true },
+  parent: { canAdd:false, canEdit:false, canDelete:false, canDownload:false,
+    canRevokeDownload:false, canViewAll:false, canSendWhatsApp:false, viewOwnChild:true }
+};
+
+const ULTRAMSG_CONFIG = {
+  instanceId: localStorage.getItem('ultramsg_instance') || "YOUR_INSTANCE_ID",
+  token: localStorage.getItem('ultramsg_token') || "YOUR_ULTRAMSG_TOKEN",
+  baseUrl: "https://api.ultramsg.com"
+};
+
+const WEATHER_LAT = 25.4209, WEATHER_LON = 68.5347;
+
+let currentUser = null, currentRole = null, currentPage = 'dashboard';
+let students = [], teachers = [], aiConversation = [];
+
+// ═══════════════════════════════════
+// AUTH
+// ═══════════════════════════════════
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    try {
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        currentUser = { uid: user.uid, ...userDoc.data() };
+        currentRole = currentUser.role;
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('appShell').style.display = 'flex';
+        initApp();
+      } else {
+        await auth.signOut();
+        showToast('User profile not found. Contact admin.', 'error');
+      }
+    } catch(e) {
+      showToast('Auth error: ' + e.message, 'error');
+    }
+  } else {
+    currentUser = null; currentRole = null;
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appShell').style.display = 'none';
+  }
+});
+
+window.doLogin = async function() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const btn = document.getElementById('loginBtn');
+  if (!email || !pass) return showToast('Email and password required', 'error');
+  btn.innerHTML = '<span class="spin"></span> Logging in...';
+  btn.disabled = true;
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+  } catch(e) {
+    showToast('Login failed: ' + e.message, 'error');
+    btn.innerHTML = 'Login &rarr;';
+    btn.disabled = false;
+  }
+};
+
+window.doLogout = async function() {
+  await auth.signOut();
+  showToast('Logged out!', 'info');
+};
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+async function initApp() {
+  document.getElementById('userName').textContent = currentUser.name || 'User';
+  document.getElementById('userRole').textContent = currentRole.charAt(0).toUpperCase() + currentRole.slice(1);
+  document.getElementById('topbarName').textContent = currentUser.name;
+  const badge = document.getElementById('roleBadge');
+  badge.textContent = currentRole.toUpperCase();
+  badge.className = 'role-badge role-' + currentRole;
+  document.querySelectorAll('[data-admin-only]').forEach(el => {
+    el.style.display = PERMISSIONS[currentRole].canAdd ? '' : 'none';
+  });
+  if (currentRole !== 'admin') {
+    document.querySelectorAll('.nav-admin').forEach(el => el.style.display = 'none');
+  }
+  loadStudents();
+  loadTeachers();
+  loadWeather();
+  startClock();
+  navigateTo('dashboard');
+  showToast('Welcome, ' + currentUser.name + '! (' + currentRole + ')', 'success');
+}
+
+// ═══════════════════════════════════
+// CLOCK & GREETING
+// ═══════════════════════════════════
+function startClock() {
+  function tick() {
+    const now = new Date();
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const h12 = now.getHours() % 12 || 12;
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const s = String(now.getSeconds()).padStart(2,'0');
+    const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
+    const cl = document.getElementById('clock');
+    const ds = document.getElementById('dateStr');
+    if (cl) cl.textContent = String(h12).padStart(2,'0') + ':' + m + ':' + s + ' ' + ampm;
+    if (ds) ds.textContent = days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+    const gr = document.getElementById('greetingText');
+    if (gr) {
+      const h = now.getHours();
+      let g = h<6?'Fajr time! Rise and pray':h<12?'Good Morning':h<15?'Good Afternoon':h<18?'Good Evening':h<20?'Maghrib time!':'Good Night';
+      gr.textContent = g + (currentUser ? ', ' + currentUser.name + '!' : '!');
+    }
+    checkBirthdays();
+  }
+  tick(); setInterval(tick, 1000);
+  setInterval(updateSessionProgress, 10000);
+  updateSessionProgress();
+}
+
+function updateSessionProgress() {
+  const now = new Date();
+  const total = now.getHours()*60 + now.getMinutes();
+  const start = 8*60, end = 12*60;
+  let pct = total<start?0:total>=end?100:Math.round((total-start)/(end-start)*100);
+  let badge = total<start?'Not Started':total>=end?'School Over':'Active';
+  const pb = document.getElementById('sessionProgress');
+  const sb = document.getElementById('sessionBadge');
+  if (pb) pb.style.width = pct + '%';
+  if (sb) { sb.textContent = badge + ' - ' + pct + '%'; sb.style.background = pct===100?'rgba(198,40,40,.2)':'rgba(46,125,50,.2)'; sb.style.color = pct===100?'#ef9a9a':'#81c784'; }
+}
+
+// ═══════════════════════════════════
+// WEATHER
+// ═══════════════════════════════════
+async function loadWeather() {
+  try {
+    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + WEATHER_LAT + '&longitude=' + WEATHER_LON + '&current_weather=true');
+    const data = await res.json();
+    const w = data.current_weather;
+    const codes = {0:'☀️ Clear',1:'🌤 Mostly Clear',2:'⛅ Partly Cloudy',3:'☁️ Overcast',45:'🌫 Foggy',61:'🌧 Rain',80:'🌩 Showers',95:'⛈ Thunderstorm'};
+    document.getElementById('weatherTemp').textContent = Math.round(w.temperature) + '°C';
+    document.getElementById('weatherDesc').textContent = codes[w.weathercode] || 'Clear';
+    document.getElementById('weatherWind').textContent = w.windspeed + ' km/h';
+  } catch(e) { document.getElementById('weatherTemp').textContent = '--°C'; }
+}
+
+// ═══════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════
+window.navigateTo = function(page) {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+  const pg = document.getElementById('page-' + page);
+  if (pg) pg.style.display = 'block';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navEl = document.querySelector('[data-nav="' + page + '"]');
+  if (navEl) navEl.classList.add('active');
+  window.closeSidebar();
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'students') renderStudentsPage();
+  if (page === 'teachers') renderTeachersPage();
+  if (page === 'ai') renderAIPage();
+};
+
+window.toggleSidebar = function() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+};
+window.closeSidebar = function() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+};
+window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; };
+function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+
+// ═══════════════════════════════════
+// STUDENTS
+// ═══════════════════════════════════
+function loadStudents() {
+  db.collection('students').orderBy('name').onSnapshot((snap) => {
+    students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (currentPage === 'students') renderStudentsPage();
+    if (currentPage === 'dashboard') renderDashboard();
+    checkBirthdays();
+  });
+}
+
+function loadTeachers() {
+  db.collection('teachers').orderBy('name').onSnapshot((snap) => {
+    teachers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (currentPage === 'teachers') renderTeachersPage();
+    if (currentPage === 'dashboard') renderDashboard();
+  });
+}
+
+window.saveStudent = async function() {
+  if (!hasPermission('canAdd')) return noPermission();
+  const id = document.getElementById('s_id').value;
+  const data = {
+    name: document.getElementById('s_name').value,
+    fatherName: document.getElementById('s_father').value,
+    rollNo: document.getElementById('s_roll').value,
+    class: document.getElementById('s_class').value,
+    section: document.getElementById('s_section').value,
+    dob: document.getElementById('s_dob').value,
+    phone: document.getElementById('s_phone').value,
+    address: document.getElementById('s_address').value,
+    feeStatus: document.getElementById('s_fee').value,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  if (!data.name || !data.rollNo || !data.class) return showToast('Name, Roll No & Class required', 'error');
+  try {
+    if (id) {
+      await db.collection('students').doc(id).update(data);
+      showToast('Student updated!', 'success');
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('students').add(data);
+      showToast('Student added!', 'success');
+    }
+    window.closeModal('studentModal');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+};
+
+window.deleteStudent = async function(id) {
+  if (!hasPermission('canDelete')) return noPermission();
+  if (!confirm('Delete this student?')) return;
+  await db.collection('students').doc(id).delete();
+  showToast('Student deleted', 'info');
+};
+
+window.openStudentModal = function(student) {
+  if (!hasPermission('canAdd')) return noPermission();
+  ['s_id','s_name','s_father','s_roll','s_class','s_section','s_dob','s_phone','s_address'].forEach(f => document.getElementById(f).value = '');
+  document.getElementById('s_fee').value = 'pending';
+  document.getElementById('studentModalTitle').textContent = student ? 'Edit Student' : 'Add New Student';
+  if (student) {
+    document.getElementById('s_id').value = student.id || '';
+    document.getElementById('s_name').value = student.name || '';
+    document.getElementById('s_father').value = student.fatherName || '';
+    document.getElementById('s_roll').value = student.rollNo || '';
+    document.getElementById('s_class').value = student.class || '';
+    document.getElementById('s_section').value = student.section || '';
+    document.getElementById('s_dob').value = student.dob || '';
+    document.getElementById('s_phone').value = student.phone || '';
+    document.getElementById('s_address').value = student.address || '';
+    document.getElementById('s_fee').value = student.feeStatus || 'pending';
+  }
+  openModal('studentModal');
+};
+
+// ═══════════════════════════════════
+// TEACHERS
+// ═══════════════════════════════════
+window.saveTeacher = async function() {
+  if (!hasPermission('canAdd')) return noPermission();
+  const id = document.getElementById('t_id').value;
+  const data = {
+    name: document.getElementById('t_name').value,
+    subject: document.getElementById('t_subject').value,
+    phone: document.getElementById('t_phone').value,
+    qualification: document.getElementById('t_qual').value,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  if (!data.name) return showToast('Teacher name required', 'error');
+  try {
+    if (id) {
+      await db.collection('teachers').doc(id).update(data);
+      showToast('Teacher updated!', 'success');
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('teachers').add(data);
+      showToast('Teacher added!', 'success');
+    }
+    window.closeModal('teacherModal');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+};
+
+window.deleteTeacher = async function(id) {
+  if (!hasPermission('canDelete')) return noPermission();
+  if (!confirm('Delete this teacher?')) return;
+  await db.collection('teachers').doc(id).delete();
+  showToast('Teacher deleted', 'info');
+};
+
+window.openTeacherModal = function(teacher) {
+  if (!hasPermission('canAdd')) return noPermission();
+  ['t_id','t_name','t_subject','t_phone','t_qual'].forEach(f => document.getElementById(f).value = '');
+  document.getElementById('teacherModalTitle').textContent = teacher ? 'Edit Teacher' : 'Add Teacher';
+  if (teacher) {
+    document.getElementById('t_id').value = teacher.id || '';
+    document.getElementById('t_name').value = teacher.name || '';
+    document.getElementById('t_subject').value = teacher.subject || '';
+    document.getElementById('t_phone').value = teacher.phone || '';
+    document.getElementById('t_qual').value = teacher.qualification || '';
+  }
+  openModal('teacherModal');
+};
+
+// ═══════════════════════════════════
+// BIRTHDAY WIDGET
+// ═══════════════════════════════════
+function checkBirthdays() {
+  const today = new Date();
+  const container = document.getElementById('birthdayWidget');
+  if (!container) return;
+  const upcoming = students.filter(s => {
+    if (!s.dob) return false;
+    const parts = s.dob.split('-');
+    if (parts.length < 3) return false;
+    const bday = new Date(today.getFullYear(), parseInt(parts[1])-1, parseInt(parts[2]));
+    const diff = Math.ceil((bday - today) / 86400000);
+    return diff >= 0 && diff <= 7;
+  });
+  if (!upcoming.length) { container.innerHTML = '<div class="no-bday">🎂 No birthdays in next 7 days</div>'; return; }
+  container.innerHTML = upcoming.map(s => {
+    const parts = s.dob.split('-');
+    const bday = new Date(today.getFullYear(), parseInt(parts[1])-1, parseInt(parts[2]));
+    const diff = Math.ceil((bday - today) / 86400000);
+    const isToday = diff === 0;
+    return '<div class="bday-card ' + (isToday?'bday-today':'') + '">' +
+      '<div class="bday-icon">' + (isToday?'🎂':'🎈') + '</div>' +
+      '<div class="bday-info"><div class="bday-name">' + s.name + '</div><div class="bday-sub">Class ' + s.class + ' | Roll ' + s.rollNo + '</div></div>' +
+      '<div class="bday-badge">' + (isToday?'🎉 TODAY!':'in ' + diff + ' day' + (diff>1?'s':'')) + '</div></div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════
+// WHATSAPP
+// ═══════════════════════════════════
+window.sendWhatsApp = async function(phone, message, type) {
+  if (!hasPermission('canSendWhatsApp')) return noPermission();
+  if (!phone) return showToast('No phone number', 'error');
+  const cleanPhone = '92' + phone.replace(/\D/g,'').replace(/^0/,'');
+  try {
+    const res = await fetch(ULTRAMSG_CONFIG.baseUrl + '/' + ULTRAMSG_CONFIG.instanceId + '/messages/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ token: ULTRAMSG_CONFIG.token, to: cleanPhone, body: message })
+    });
+    const data = await res.json();
+    if (data.sent === 'true' || data.id) {
+      showToast('WhatsApp sent!', 'success');
+      await db.collection('whatsapp_logs').add({ to: phone, message, type: type||'msg', sentBy: currentUser.uid, sentAt: firebase.firestore.FieldValue.serverTimestamp() });
+    } else {
+      showToast('WhatsApp failed. Check UltraMsg settings.', 'error');
+    }
+  } catch(e) { showToast('WhatsApp error: ' + e.message, 'error'); }
+};
+
+window.sendAttendanceAlert = async function(studentId, status) {
+  const student = students.find(s => s.id === studentId);
+  if (!student || !student.phone) return;
+  const msg = '*AL-FAREED PUBLIC SCHOOL*\nTando Jam\n\nDear Parent,\n\n*' + student.name + '* (Class ' + student.class + ', Roll ' + student.rollNo + ') was marked *' + status.toUpperCase() + '* today.\n\nDate: ' + new Date().toLocaleDateString('en-PK') + '\n\nFor queries contact school.';
+  await window.sendWhatsApp(student.phone, msg, 'attendance');
+};
+
+window.sendFeeAlert = async function(studentId, amount, month) {
+  const student = students.find(s => s.id === studentId);
+  if (!student || !student.phone) return;
+  const msg = '*AL-FAREED PUBLIC SCHOOL*\nTando Jam\n\nFee Reminder\n\nDear Parent of *' + student.name + '* (Class ' + student.class + ')\n\nFee of *Rs. ' + (amount||'?') + '* for *' + (month||'this month') + '* is pending.\n\nPlease clear dues.';
+  await window.sendWhatsApp(student.phone, msg, 'fee_reminder');
+};
+
+// ═══════════════════════════════════
+// DOWNLOAD PERMISSIONS
+// ═══════════════════════════════════
+window.grantDownloadPermission = async function(userId) {
+  if (!hasPermission('canGrantPermissions')) return noPermission();
+  await db.collection('downloadPermissions').doc(userId).set({ granted: true, grantedAt: firebase.firestore.FieldValue.serverTimestamp(), grantedBy: currentUser.uid, revoked: false });
+  showToast('Download permission granted', 'success');
+};
+
+window.revokeDownloadPermission = async function(userId) {
+  if (!hasPermission('canRevokeDownload')) return noPermission();
+  await db.collection('downloadPermissions').doc(userId).update({ granted: false, revoked: true, revokedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  showToast('Permission revoked', 'info');
+};
+
+async function checkDownloadPermission(userId) {
+  if (currentRole === 'admin') return true;
+  const snap = await db.collection('downloadPermissions').doc(userId).get();
+  return snap.exists && snap.data().granted === true && !snap.data().revoked;
+}
+
+window.exportStudents = async function() {
+  const allowed = await checkDownloadPermission(currentUser.uid);
+  if (!allowed) return showToast('Download not permitted. Contact Admin.', 'error');
+  const rows = [['Roll No','Name','Father Name','Class','Section','DOB','Phone','Fee Status']];
+  students.forEach(s => rows.push([s.rollNo,s.name,s.fatherName,s.class,s.section,s.dob,s.phone,s.feeStatus]));
+  const csv = rows.map(r => r.map(c => '"'+(c||'')+'"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'students-alfareed.csv'; a.click();
+  showToast('Exported!', 'success');
+};
+
+// ═══════════════════════════════════
+// AI ASSISTANT
+// ═══════════════════════════════════
+window.sendAIMessage = async function() {
+  const input = document.getElementById('aiInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  appendAIMsg('user', msg);
+  const typingEl = appendAIMsg('ai', '...', true);
+  const systemPrompt = 'You are the AI Assistant for AL-FAREED PUBLIC SCHOOL, Tando Jam, Pakistan. User: ' + currentUser.name + ' (' + currentRole + '). Date: ' + new Date().toLocaleDateString('en-PK') + '. Students: ' + students.map(s => s.name + ' Class:' + s.class + ' Roll:' + s.rollNo + ' DOB:' + (s.dob||'N/A') + ' Fee:' + (s.feeStatus||'N/A')).join(' | ') + '. Teachers: ' + teachers.map(t => t.name + ' ' + (t.subject||'')).join(' | ') + '. Respond in same language as question. For cards/papers generate complete printable HTML.';
+  aiConversation.push({ role:'user', content:msg });
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, system:systemPrompt, messages:aiConversation.slice(-10) })
+    });
+    const data = await res.json();
+    const reply = (data.content && data.content[0]) ? data.content[0].text : 'Error getting response';
+    typingEl.remove();
+    const el = appendAIMsg('ai', reply);
+    aiConversation.push({ role:'assistant', content:reply });
+    if (reply.includes('<html') || reply.includes('<!DOCTYPE')) {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-sm btn-outline'; btn.style.marginTop='8px';
+      btn.textContent = '🖨 Print / Download';
+      btn.onclick = function() { const w = window.open('','_blank'); w.document.write(reply); w.document.close(); setTimeout(()=>w.print(),500); };
+      el.appendChild(btn);
+    }
+  } catch(e) { typingEl.remove(); appendAIMsg('ai', 'Error: ' + e.message); }
+};
+
+function appendAIMsg(role, text, isTyping) {
+  const c = document.getElementById('aiMessages');
+  const d = document.createElement('div');
+  d.className = 'ai-msg ai-msg-' + role;
+  if (isTyping) { d.innerHTML = '<span class="typing-dots"><span></span><span></span><span></span></span>'; }
+  else { d.innerHTML = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>'); }
+  c.appendChild(d); c.scrollTop = c.scrollHeight;
+  return d;
+}
+
+// ═══════════════════════════════════
+// RENDER
+// ═══════════════════════════════════
+function renderDashboard() {
+  const s = (id,v) => { const el = document.getElementById(id); if(el) el.textContent=v; };
+  s('statStudents', students.length);
+  s('statTeachers', teachers.length);
+  s('statFees', students.filter(x => x.feeStatus === 'pending').length);
+  checkBirthdays();
+}
+
+function renderStudentsPage() {
+  const search = (document.getElementById('studentSearch')||{}).value||'';
+  const cls = (document.getElementById('studentClassFilter')||{}).value||'';
+  let filtered = students;
+  if (search) filtered = filtered.filter(s => (s.name||'').toLowerCase().includes(search.toLowerCase()) || (s.rollNo||'').toString().includes(search) || (s.fatherName||'').toLowerCase().includes(search.toLowerCase()));
+  if (cls) filtered = filtered.filter(s => s.class === cls);
+  const tbody = document.getElementById('studentsTableBody');
+  if (!tbody) return;
+  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center">No students found</td></tr>'; return; }
+  tbody.innerHTML = filtered.map(s => '<tr><td><strong>' + (s.rollNo||'-') + '</strong></td><td><div class="student-name">' + (s.name||'') + '</div><div class="text-muted text-sm">' + (s.fatherName||'') + '</div></td><td>' + (s.class||'-') + (s.section?' - '+s.section:'') + '</td><td>' + (s.phone||'-') + '</td><td><span class="fee-badge fee-' + (s.feeStatus||'pending') + '">' + (s.feeStatus||'pending') + '</span></td><td>' + (s.dob?'🎂 '+s.dob:'-') + '</td><td><div class="action-btns">' +
+    (hasPermission('canEdit') ? '<button class="btn btn-xs btn-primary" onclick='openStudentModal(' + JSON.stringify(s) + ')'>✏️</button>' : '') +
+    (hasPermission('canDelete') ? '<button class="btn btn-xs btn-danger" onclick="deleteStudent('' + s.id + '')">🗑</button>' : '') +
+    (hasPermission('canSendWhatsApp') && s.phone ? '<button class="btn btn-xs btn-success" onclick="sendFeeAlert('' + s.id + '','','')">📱</button>' : '') +
+    '</div></td></tr>').join('');
+}
+
+function renderTeachersPage() {
+  const tbody = document.getElementById('teachersTableBody');
+  if (!tbody) return;
+  if (!teachers.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center">No teachers found</td></tr>'; return; }
+  tbody.innerHTML = teachers.map(t => '<tr><td><strong>' + (t.name||'') + '</strong></td><td>' + (t.subject||'-') + '</td><td>' + (t.phone||'-') + '</td><td>' + (t.qualification||'-') + '</td><td><div class="action-btns">' +
+    (hasPermission('canEdit') ? '<button class="btn btn-xs btn-primary" onclick='openTeacherModal(' + JSON.stringify(t) + ')'>✏️</button>' : '') +
+    (hasPermission('canDelete') ? '<button class="btn btn-xs btn-danger" onclick="deleteTeacher('' + t.id + '')">🗑</button>' : '') +
+    '</div></td></tr>').join('');
+}
+
+function renderAIPage() {
+  const msgs = document.getElementById('aiMessages');
+  if (msgs && !msgs.children.length) {
+    appendAIMsg('ai', 'Assalamu Alaikum ' + (currentUser?currentUser.name:'') + '!\n\nMain AL-FAREED SCHOOL ka AI Assistant hoon.\n\nAap mujh se yeh kar sakte hain:\n• **Kisi student ka naam** likhein — result card, ID card banega\n• "Class 5 attendance report" — summary\n• "Fee pending list" — pending fees\n• "Exam paper Class 8 Science" — paper generate\n• "Notice likhain" — school notice draft\n\nKya karna hai?');
+  }
+}
+
+// ═══════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════
+function hasPermission(perm) { return PERMISSIONS[currentRole] && PERMISSIONS[currentRole][perm] === true; }
+function noPermission() { showToast('Permission denied. Admin access required.', 'error'); }
+
+function showToast(msg, type) {
+  type = type || 'info';
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.textContent = msg;
+  container.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3500);
+}
+
+window.filterStudents = function() { renderStudentsPage(); };
+
+window.sendAttendanceDemo = function() {
+  if (students.length > 0) window.sendAttendanceAlert(students[0].id, 'absent');
+  else showToast('Add a student first to test WhatsApp', 'info');
+};
+
+window.saveUltraMsgSettings = function() {
+  const inst = document.getElementById('settingInstanceId').value;
+  const tok = document.getElementById('settingToken').value;
+  if (inst) { ULTRAMSG_CONFIG.instanceId = inst; localStorage.setItem('ultramsg_instance', inst); }
+  if (tok) { ULTRAMSG_CONFIG.token = tok; localStorage.setItem('ultramsg_token', tok); }
+  showToast('WhatsApp config saved!', 'success');
+};
+
+function setFontSize(size) {
+  document.body.className = document.body.className.replace(/font-\w+/g,'');
+  document.body.classList.add('font-' + size);
+  localStorage.setItem('fontSize', size);
+}
+window.setFontSize = setFontSize;
+const savedFont = localStorage.getItem('fontSize');
+if (savedFont) setFontSize(savedFont);
+
+</script>
+
+<style>
+:root {
+  --primary: #0f4c81;
+  --primary-light: #1565c0;
+  --accent: #f4b400;
+  --accent2: #00897b;
+  --danger: #c62828;
+  --success: #2e7d32;
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #1c2230;
+  --border: rgba(255,255,255,0.08);
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --radius: 14px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --font-size-base: 14px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+html, body {
+  height:100%; font-family:'Outfit',sans-serif;
+  background:var(--bg); color:var(--text);
+  font-size:var(--font-size-base);
+  overflow:hidden;
+}
+
+/* ── LOGIN ── */
+#loginScreen {
+  position:fixed; inset:0; z-index:1000;
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg, #0a1628 0%, #0f2040 50%, #0a1628 100%);
+}
+.login-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:24px;
+  padding:40px 32px;
+  width:min(380px, calc(100vw - 32px));
+  box-shadow:var(--shadow);
+}
+.login-logo {
+  text-align:center; margin-bottom:28px;
+}
+.login-logo .school-icon {
+  width:72px; height:72px;
+  background:linear-gradient(135deg,var(--primary),var(--primary-light));
+  border-radius:20px;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:2rem; margin-bottom:12px;
+  box-shadow:0 8px 32px rgba(15,76,129,0.5);
+}
+.login-logo h2 {
+  font-size:1.1rem; font-weight:700; color:var(--text);
+  letter-spacing:.5px;
+}
+.login-logo p {
+  font-size:.75rem; color:var(--accent); margin-top:2px;
+}
+.form-group { margin-bottom:16px; }
+.form-label { display:block; font-size:.75rem; color:var(--text-muted); margin-bottom:6px; font-weight:500; letter-spacing:.5px; text-transform:uppercase; }
+.form-input {
+  width:100%; padding:12px 16px;
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:10px; color:var(--text); font-size:.9rem;
+  font-family:'Outfit',sans-serif;
+  transition:border .2s;
+}
+.form-input:focus { outline:none; border-color:var(--primary-light); }
+.form-input::placeholder { color:var(--text-muted); }
+.login-footer { text-align:center; margin-top:16px; font-size:.7rem; color:var(--text-muted); }
+
+/* ── APP SHELL ── */
+#appShell {
+  display:none; height:100vh;
+  flex-direction:column; overflow:hidden;
+}
+
+/* TOPBAR */
+.topbar {
+  height:56px; background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:12px;
+  padding:0 16px; flex-shrink:0;
+  position:relative; z-index:100;
+}
+.topbar-menu {
+  background:none; border:none; color:var(--text);
+  font-size:1.3rem; cursor:pointer; padding:4px;
+}
+.topbar-title { font-weight:700; font-size:.95rem; flex:1; }
+.topbar-right { display:flex; align-items:center; gap:10px; }
+.topbar-user { font-size:.75rem; color:var(--text-muted); }
+.role-badge {
+  padding:3px 10px; border-radius:20px; font-size:.65rem; font-weight:700; letter-spacing:.5px;
+}
+.role-admin { background:rgba(244,180,0,.15); color:var(--accent); border:1px solid rgba(244,180,0,.3); }
+.role-teacher { background:rgba(0,137,123,.15); color:#4db6ac; border:1px solid rgba(0,137,123,.3); }
+.role-parent { background:rgba(15,76,129,.15); color:#42a5f5; border:1px solid rgba(15,76,129,.3); }
+
+/* OVERLAY */
+#overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.6);
+  z-index:199; display:none; backdrop-filter:blur(3px);
+}
+#overlay.show { display:block; }
+
+/* SIDEBAR */
+#sidebar {
+  position:fixed; left:-280px; top:0; bottom:0;
+  width:280px; background:var(--surface);
+  border-right:1px solid var(--border);
+  z-index:200; transition:left .3s cubic-bezier(.4,0,.2,1);
+  display:flex; flex-direction:column;
+  overflow-y:auto;
+}
+#sidebar.open { left:0; }
+.sidebar-header {
+  padding:20px 16px 16px;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(135deg,var(--primary),var(--primary-light));
+}
+.sidebar-school { font-size:.7rem; color:rgba(255,255,255,.7); margin-bottom:4px; }
+.sidebar-name { font-weight:700; font-size:1rem; }
+.sidebar-role { font-size:.7rem; color:var(--accent); margin-top:2px; }
+.nav-section { padding:12px 8px 4px; font-size:.65rem; color:var(--text-muted); letter-spacing:.8px; text-transform:uppercase; font-weight:600; }
+.nav-item {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 16px; cursor:pointer; border-radius:10px;
+  margin:1px 8px; font-size:.88rem; font-weight:500;
+  transition:all .2s; color:var(--text-muted);
+}
+.nav-item:hover { background:rgba(255,255,255,.05); color:var(--text); }
+.nav-item.active { background:rgba(15,76,129,.25); color:var(--primary-light); }
+.nav-item .nav-icon { font-size:1rem; width:22px; text-align:center; }
+.sidebar-bottom {
+  margin-top:auto; padding:12px;
+  border-top:1px solid var(--border);
+}
+
+/* MAIN CONTENT */
+.main-content {
+  flex:1; overflow-y:auto; padding:16px;
+  background:var(--bg);
+}
+
+/* PAGES */
+.page { display:none; }
+
+/* DASHBOARD */
+.dash-header {
+  background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);
+  border-radius:var(--radius); padding:20px; margin-bottom:16px;
+  position:relative; overflow:hidden;
+}
+.dash-header::after {
+  content:''; position:absolute; right:-20px; top:-20px;
+  width:120px; height:120px; border-radius:50%;
+  background:rgba(255,255,255,.05);
+}
+.dash-time { font-size:1.8rem; font-weight:800; letter-spacing:2px; }
+.dash-date { font-size:.75rem; color:rgba(255,255,255,.7); margin-top:2px; }
+.dash-greeting { font-size:.9rem; margin-top:8px; font-weight:500; }
+
+.weather-row {
+  display:flex; gap:12px; margin-top:12px;
+  background:rgba(255,255,255,.1); border-radius:10px; padding:10px 14px;
+  align-items:center;
+}
+.weather-temp { font-size:1.4rem; font-weight:700; }
+.weather-info { flex:1; }
+.weather-desc { font-size:.8rem; color:rgba(255,255,255,.8); }
+.weather-wind { font-size:.7rem; color:rgba(255,255,255,.6); }
+
+/* Stats Grid */
+.stats-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;
+}
+.stat-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px;
+  display:flex; align-items:center; gap:12px;
+}
+.stat-icon {
+  width:44px; height:44px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center; font-size:1.3rem;
+}
+.stat-icon.blue { background:rgba(21,101,192,.2); }
+.stat-icon.green { background:rgba(46,125,50,.2); }
+.stat-icon.amber { background:rgba(244,180,0,.2); }
+.stat-icon.red { background:rgba(198,40,40,.2); }
+.stat-num { font-size:1.6rem; font-weight:800; line-height:1; }
+.stat-label { font-size:.7rem; color:var(--text-muted); margin-top:2px; }
+
+/* Quick Actions */
+.section-title { font-size:.85rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.8px; margin-bottom:10px; }
+.quick-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px;
+}
+.quick-btn {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:12px; padding:12px 6px;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  cursor:pointer; transition:all .2s; font-family:'Outfit',sans-serif;
+  color:var(--text);
+}
+.quick-btn:hover { background:var(--surface2); border-color:var(--primary-light); transform:translateY(-2px); }
+.quick-btn .qi { font-size:1.4rem; }
+.quick-btn .ql { font-size:.65rem; color:var(--text-muted); font-weight:500; }
+
+/* Birthday Widget */
+.birthday-widget {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:14px; margin-bottom:16px;
+}
+.bday-card {
+  display:flex; align-items:center; gap:10px;
+  padding:10px; border-radius:10px;
+  background:rgba(255,255,255,.04); margin-bottom:6px;
+  border:1px solid rgba(255,255,255,.06);
+  transition:all .2s;
+}
+.bday-card.bday-today {
+  background:linear-gradient(135deg,rgba(244,180,0,.15),rgba(255,167,38,.1));
+  border-color:rgba(244,180,0,.4);
+  animation:glow-bday 2s ease-in-out infinite;
+}
+@keyframes glow-bday {
+  0%,100% { box-shadow:0 0 0 rgba(244,180,0,0); }
+  50% { box-shadow:0 0 16px rgba(244,180,0,.3); }
+}
+.bday-icon { font-size:1.5rem; }
+.bday-info { flex:1; }
+.bday-name { font-size:.88rem; font-weight:600; }
+.bday-sub { font-size:.7rem; color:var(--text-muted); }
+.bday-badge {
+  font-size:.65rem; padding:3px 8px; border-radius:20px;
+  background:rgba(244,180,0,.2); color:var(--accent); font-weight:700;
+}
+.no-bday { text-align:center; color:var(--text-muted); font-size:.8rem; padding:10px; }
+
+/* Session card */
+.session-card {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:14px; margin-bottom:16px;
+}
+.session-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.session-title { font-weight:700; font-size:.9rem; }
+.session-badge { font-size:.7rem; padding:4px 10px; border-radius:20px; background:rgba(46,125,50,.2); color:#66bb6a; }
+.progress-bar { height:6px; background:rgba(255,255,255,.1); border-radius:3px; overflow:hidden; margin:8px 0; }
+.progress-fill { height:100%; background:linear-gradient(90deg,var(--primary-light),var(--accent)); border-radius:3px; transition:width .5s; }
+.session-times { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px; }
+.stime { background:rgba(255,255,255,.04); border-radius:8px; padding:8px; }
+.stime-label { font-size:.65rem; color:var(--text-muted); }
+.stime-val { font-size:.85rem; font-weight:700; color:var(--accent); }
+
+/* TABLES */
+.table-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); overflow:hidden; margin-bottom:16px;
+}
+.table-header {
+  padding:14px 16px; display:flex; align-items:center;
+  gap:10px; border-bottom:1px solid var(--border);
+  flex-wrap:wrap;
+}
+.table-header h3 { font-size:.9rem; font-weight:700; flex:1; }
+.search-input {
+  padding:8px 12px; background:var(--bg); border:1px solid var(--border);
+  border-radius:8px; color:var(--text); font-size:.8rem;
+  font-family:'Outfit',sans-serif; width:160px;
+}
+.search-input:focus { outline:none; border-color:var(--primary-light); }
+select.search-input { width:110px; }
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:.82rem; }
+th {
+  padding:10px 12px; text-align:left;
+  background:var(--surface2); color:var(--text-muted);
+  font-size:.7rem; text-transform:uppercase; letter-spacing:.5px; font-weight:600;
+  border-bottom:1px solid var(--border);
+}
+td {
+  padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.04);
+}
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(255,255,255,.02); }
+.text-muted { color:var(--text-muted); }
+.text-sm { font-size:.75rem; }
+.text-center { text-align:center; color:var(--text-muted); padding:20px !important; }
+.student-name { font-weight:600; }
+
+/* Badges */
+.fee-badge { padding:3px 10px; border-radius:20px; font-size:.68rem; font-weight:600; }
+.fee-paid { background:rgba(46,125,50,.2); color:#81c784; }
+.fee-pending { background:rgba(198,40,40,.2); color:#ef9a9a; }
+.fee-partial { background:rgba(244,180,0,.2); color:#ffd54f; }
+
+/* Buttons */
+.btn {
+  padding:9px 18px; border-radius:10px; border:none; cursor:pointer;
+  font-size:.82rem; font-weight:600; font-family:'Outfit',sans-serif;
+  transition:all .2s; display:inline-flex; align-items:center; gap:6px;
+}
+.btn-primary { background:var(--primary-light); color:white; }
+.btn-primary:hover { background:#1976d2; transform:translateY(-1px); }
+.btn-danger { background:var(--danger); color:white; }
+.btn-danger:hover { background:#d32f2f; }
+.btn-success { background:var(--accent2); color:white; }
+.btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+.btn-outline:hover { border-color:var(--primary-light); color:var(--primary-light); }
+.btn-xs { padding:5px 9px; font-size:.72rem; border-radius:7px; }
+.btn-sm { padding:7px 14px; font-size:.78rem; }
+.mt-1 { margin-top:6px; }
+
+.action-btns { display:flex; gap:4px; flex-wrap:wrap; }
+
+/* AI PAGE */
+.ai-container { display:flex; flex-direction:column; height:calc(100vh - 120px); }
+.ai-messages {
+  flex:1; overflow-y:auto; padding:8px;
+  display:flex; flex-direction:column; gap:8px;
+  scrollbar-width:thin;
+}
+.ai-msg {
+  max-width:85%; padding:10px 14px;
+  border-radius:16px; font-size:.85rem; line-height:1.6;
+  animation:fadeIn .3s ease;
+}
+.ai-msg-user {
+  align-self:flex-end;
+  background:var(--primary-light); color:white;
+  border-bottom-right-radius:4px;
+}
+.ai-msg-ai {
+  align-self:flex-start;
+  background:var(--surface2); color:var(--text);
+  border:1px solid var(--border);
+  border-bottom-left-radius:4px;
+}
+.ai-input-row {
+  display:flex; gap:8px; margin-top:10px;
+  padding:12px; background:var(--surface);
+  border-radius:var(--radius); border:1px solid var(--border);
+}
+.ai-input {
+  flex:1; background:transparent; border:none;
+  color:var(--text); font-size:.88rem;
+  font-family:'Outfit',sans-serif; outline:none;
+}
+.ai-input::placeholder { color:var(--text-muted); }
+.typing-dots { display:flex; gap:4px; align-items:center; padding:4px 0; }
+.typing-dots span {
+  width:6px; height:6px; background:var(--text-muted);
+  border-radius:50%; animation:dot-b 1.2s ease-in-out infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay:.2s; }
+.typing-dots span:nth-child(3) { animation-delay:.4s; }
+@keyframes dot-b { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+
+/* MODAL */
+.modal {
+  position:fixed; inset:0; z-index:300;
+  background:rgba(0,0,0,.75); backdrop-filter:blur(6px);
+  display:none; align-items:center; justify-content:center;
+  padding:16px;
+}
+.modal-box {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:20px; width:100%; max-width:460px;
+  max-height:90vh; overflow-y:auto;
+  box-shadow:var(--shadow);
+}
+.modal-header {
+  padding:18px 20px 14px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; background:var(--surface); z-index:1;
+}
+.modal-title { font-weight:700; font-size:1rem; }
+.modal-close {
+  background:none; border:none; color:var(--text-muted);
+  font-size:1.3rem; cursor:pointer; padding:4px;
+}
+.modal-body { padding:20px; }
+.modal-footer { padding:14px 20px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+select.form-input { appearance:none; }
+
+/* TOAST */
+#toastContainer { position:fixed; bottom:20px; right:16px; z-index:999; display:flex; flex-direction:column; gap:8px; }
+.toast {
+  padding:10px 16px; border-radius:10px; font-size:.82rem; font-weight:500;
+  opacity:0; transform:translateX(100%); transition:all .35s cubic-bezier(.4,0,.2,1);
+  max-width:300px; box-shadow:var(--shadow);
+}
+.toast.show { opacity:1; transform:translateX(0); }
+.toast-success { background:#1b5e20; border:1px solid #2e7d32; color:#c8e6c9; }
+.toast-error { background:#b71c1c; border:1px solid #c62828; color:#ffcdd2; }
+.toast-info { background:#0d47a1; border:1px solid #1565c0; color:#bbdefb; }
+
+/* SPIN */
+.spin {
+  display:inline-block; width:14px; height:14px;
+  border:2px solid rgba(255,255,255,.3);
+  border-top:2px solid white;
+  border-radius:50%; animation:spin .8s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* Font Size Control */
+.font-controls { display:flex; gap:6px; align-items:center; }
+.font-btn {
+  width:30px; height:30px; border-radius:8px;
+  background:var(--surface2); border:1px solid var(--border);
+  color:var(--text); cursor:pointer; font-size:.85rem; font-weight:700;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); border-radius:2px; }
+
+/* FONT SIZE ADJUSTABLE */
+body.font-sm { --font-size-base: 12px; }
+body.font-md { --font-size-base: 14px; }
+body.font-lg { --font-size-base: 16px; }
+body.font-xl { --font-size-base: 18px; }
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="school-icon">🏫</div>
+      <h2>AL-FAREED PUBLIC SCHOOL</h2>
+      <p>TANDO JAM · 2025-2026</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input class="form-input" id="loginEmail" type="email" placeholder="admin@alfareed.edu.pk" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="loginPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px" id="loginBtn" onclick="doLogin()">Login →</button>
+    <div class="login-footer">Digital School Management System<br>Developer: Sir Ghulam Hussain</div>
+  </div>
+</div>
+
+<!-- ══ APP SHELL ══ -->
+<div id="appShell" style="display:none;flex-direction:column;height:100vh">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <button class="topbar-menu" onclick="toggleSidebar()">☰</button>
+    <div class="topbar-title">AL-FAREED PUBLIC SCHOOL</div>
+    <div class="topbar-right">
+      <div class="font-controls">
+        <button class="font-btn" onclick="setFontSize('sm')">A-</button>
+        <button class="font-btn" onclick="setFontSize('lg')">A+</button>
+      </div>
+      <span id="roleBadge" class="role-badge role-admin">ADMIN</span>
+    </div>
+  </div>
+
+  <!-- OVERLAY -->
+  <div id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-school">AL-FAREED PUBLIC SCHOOL</div>
+      <div class="sidebar-name" id="userName">Loading...</div>
+      <div class="sidebar-role" id="userRole">Admin</div>
+    </div>
+
+    <div style="padding:8px">
+      <div class="nav-section">Main</div>
+      <div class="nav-item active" data-nav="dashboard" onclick="navigateTo('dashboard')">
+        <span class="nav-icon">🏠</span> Dashboard
+      </div>
+      <div class="nav-item" data-nav="students" onclick="navigateTo('students')">
+        <span class="nav-icon">👥</span> Students
+      </div>
+      <div class="nav-item" data-nav="teachers" onclick="navigateTo('teachers')">
+        <span class="nav-icon">🎓</span> Teachers
+      </div>
+
+      <div class="nav-section">Academic</div>
+      <div class="nav-item nav-admin" data-nav="attendance" onclick="navigateTo('attendance')">
+        <span class="nav-icon">✅</span> Attendance
+      </div>
+      <div class="nav-item nav-admin" data-nav="results" onclick="navigateTo('results')">
+        <span class="nav-icon">📊</span> Results
+      </div>
+      <div class="nav-item nav-admin" data-nav="homework" onclick="navigateTo('homework')">
+        <span class="nav-icon">📚</span> Homework
+      </div>
+      <div class="nav-item nav-admin" data-nav="exams" onclick="navigateTo('exams')">
+        <span class="nav-icon">📝</span> Exam Papers
+      </div>
+
+      <div class="nav-section">Finance</div>
+      <div class="nav-item nav-admin" data-nav="fees" onclick="navigateTo('fees')">
+        <span class="nav-icon">💰</span> Fees
+      </div>
+      <div class="nav-item nav-admin" data-nav="feereports" onclick="navigateTo('feereports')">
+        <span class="nav-icon">📈</span> Fee Reports
+      </div>
+
+      <div class="nav-section">Documents</div>
+      <div class="nav-item nav-admin" data-nav="idcards" onclick="navigateTo('idcards')">
+        <span class="nav-icon">🪪</span> ID Cards
+      </div>
+      <div class="nav-item nav-admin" data-nav="certificates" onclick="navigateTo('certificates')">
+        <span class="nav-icon">🏅</span> Certificates
+      </div>
+      <div class="nav-item nav-admin" data-nav="notices" onclick="navigateTo('notices')">
+        <span class="nav-icon">🔔</span> Notices
+      </div>
+
+      <div class="nav-section">Tools</div>
+      <div class="nav-item" data-nav="ai" onclick="navigateTo('ai')">
+        <span class="nav-icon">🤖</span> AI Assistant
+      </div>
+      <div class="nav-item nav-admin" data-nav="permissions" onclick="navigateTo('permissions')">
+        <span class="nav-icon">🔐</span> Permissions
+      </div>
+      <div class="nav-item nav-admin" data-nav="settings" onclick="navigateTo('settings')">
+        <span class="nav-icon">⚙️</span> Settings
+      </div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div style="font-size:.7rem;color:var(--text-muted);margin-bottom:4px;text-align:center">Logged in as: <span id="topbarName"></span></div>
+      <button class="btn btn-danger" style="width:100%;justify-content:center" onclick="doLogout()">⏏ Logout</button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+
+    <!-- ── DASHBOARD PAGE ── -->
+    <div class="page" id="page-dashboard">
+      <!-- Header card -->
+      <div class="dash-header">
+        <div class="dash-time" id="clock">--:--:-- --</div>
+        <div class="dash-date" id="dateStr">Loading...</div>
+        <div class="dash-greeting" id="greetingText">Welcome!</div>
+        <div class="weather-row">
+          <div>
+            <div class="weather-temp" id="weatherTemp">--°C</div>
+            <div style="font-size:.65rem;color:rgba(255,255,255,.6)">Tando Jam</div>
+          </div>
+          <div class="weather-info">
+            <div class="weather-desc" id="weatherDesc">Loading weather...</div>
+            <div class="weather-wind">💨 <span id="weatherWind">--</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon blue">👥</div>
+          <div>
+            <div class="stat-num" id="statStudents">0</div>
+            <div class="stat-label">Students</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">🎓</div>
+          <div>
+            <div class="stat-num" id="statTeachers">0</div>
+            <div class="stat-label">Teachers</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon amber">💰</div>
+          <div>
+            <div class="stat-num" id="statFees">0</div>
+            <div class="stat-label">Pending Fees</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red">🔔</div>
+          <div>
+            <div class="stat-num">1</div>
+            <div class="stat-label">Notices</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session Card -->
+      <div class="session-card">
+        <div class="session-row">
+          <div class="session-title">🕐 School Session</div>
+          <div class="session-badge" id="sessionBadge">Active</div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="sessionProgress" style="width:0%"></div></div>
+        <div class="session-times">
+          <div class="stime"><div class="stime-label">Morning Start</div><div class="stime-val">8:00 AM</div></div>
+          <div class="stime"><div class="stime-label">School End</div><div class="stime-val">12:00 PM</div></div>
+          <div class="stime"><div class="stime-label">Break Start</div><div class="stime-val">11:00 AM</div></div>
+          <div class="stime"><div class="stime-label">Break End</div><div class="stime-val">11:15 AM</div></div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="section-title">Quick Actions</div>
+      <div class="quick-grid">
+        <div class="quick-btn" onclick="navigateTo('attendance')"><div class="qi">✅</div><div class="ql">Attend</div></div>
+        <div class="quick-btn" onclick="navigateTo('homework')"><div class="qi">📚</div><div class="ql">Homework</div></div>
+        <div class="quick-btn" onclick="navigateTo('results')"><div class="qi">📊</div><div class="ql">Results</div></div>
+        <div class="quick-btn" onclick="navigateTo('notices')"><div class="qi">🔔</div><div class="ql">Notices</div></div>
+        <div class="quick-btn" onclick="navigateTo('fees')"><div class="qi">💰</div><div class="ql">Fees</div></div>
+        <div class="quick-btn" onclick="navigateTo('idcards')"><div class="qi">🪪</div><div class="ql">ID Cards</div></div>
+        <div class="quick-btn" onclick="navigateTo('exams')"><div class="qi">📝</div><div class="ql">Exams</div></div>
+        <div class="quick-btn" onclick="navigateTo('ai')"><div class="qi">🤖</div><div class="ql">AI Help</div></div>
+      </div>
+
+      <!-- 🎂 Birthday Widget -->
+      <div class="section-title">🎂 Upcoming Birthdays</div>
+      <div class="birthday-widget">
+        <div id="birthdayWidget"><div class="no-bday">Loading birthdays...</div></div>
+      </div>
+
+      <!-- Upcoming Holidays -->
+      <div class="section-title">📅 Upcoming Holidays</div>
+      <div class="table-card" style="padding:12px">
+        <div class="bday-card">
+          <div class="bday-icon">🌙</div>
+          <div class="bday-info"><div class="bday-name">Eid ul Fitr</div><div class="bday-sub">Islamic Holiday · 20 Mar 2026</div></div>
+          <div class="bday-badge">3 days</div>
+        </div>
+        <div class="bday-card">
+          <div class="bday-icon">🇵🇰</div>
+          <div class="bday-info"><div class="bday-name">Pakistan Day</div><div class="bday-sub">National Holiday · 23 Mar 2026</div></div>
+          <div class="bday-badge">6 days</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STUDENTS PAGE ── -->
+    <div class="page" id="page-students">
+      <div class="table-card">
+        <div class="table-header">
+          <h3>👥 Students</h3>
+          <input class="search-input" id="studentSearch" placeholder="Search..." oninput="filterStudents()">
+          <select class="search-input" id="studentClassFilter" onchange="filterStudents()">
+            <option value="">All Classes</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option>
+            <option>5</option><option>6</option><option>7</option><option>8</option>
+          </select>
+          <button class="btn btn-primary btn-sm" data-admin-only onclick="openStudentModal()">+ Add</button>
+          <button class="btn btn-outline btn-sm" data-download-btn onclick="exportStudents()">⬇ CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Roll</th><th>Name / Father</th><th>Class</th>
+                <th>Phone</th><th>Fee</th><th>Birthday</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTableBody">
+              <tr><td colspan="7" class="text-center">Loading students...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TEACHERS PAGE ── -->
+    <div class="page" id="page-teachers">
+      <div class="table-card">
+        <div class="table-header">
+          <h3>🎓 Teachers</h3>
+          <button class="btn btn-primary btn-sm" data-admin-only onclick="openTeacherModal()">+ Add</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Subject</th><th>Phone</th><th>Qualification</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="teachersTableBody">
+              <tr><td colspan="5" class="text-center">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── AI ASSISTANT PAGE ── -->
+    <div class="page" id="page-ai">
+      <div style="margin-bottom:10px">
+        <h3 style="font-size:.9rem;font-weight:700">🤖 AI Assistant</h3>
+        <p style="font-size:.75rem;color:var(--text-muted)">Ask anything about students, generate reports, cards, notices</p>
+      </div>
+      <div class="ai-container">
+        <div class="ai-messages" id="aiMessages"></div>
+        <div class="ai-input-row">
+          <input class="ai-input" id="aiInput" placeholder="Type student name or ask anything..." onkeydown="if(event.key==='Enter') sendAIMessage()">
+          <button class="btn btn-primary btn-sm" onclick="sendAIMessage()">Send ➤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PLACEHOLDER PAGES ── -->
+    <div class="page" id="page-attendance">
+      <div class="table-card" style="padding:24px;text-align:center">
+        <div style="font-size:3rem;margin-bottom:12px">✅</div>
+        <h3>Attendance Module</h3>
+        <p style="color:var(--text-muted);margin-top:8px;font-size:.85rem">Coming in Phase 2 — Mark attendance, auto WhatsApp alerts to parents</p>
+        <button class="btn btn-primary" style="margin-top:16px" onclick="sendAttendanceDemo()">📱 Test WhatsApp Alert</button>
+      </div>
+    </div>
+    <div class="page" id="page-results"><div class="table-card" style="padding:24px;text-align:center"><div style="font-size:3rem">📊</div><h3 style="margin-top:12px">Results Module</h3><p style="color:var(--text-muted);margin-top:8px;font-size:.85rem">Phase 2 — Enter marks, generate result cards, auto WhatsApp to parents</p></div></div>
+    <div class="page" id="page-homework"><div class="table-card" style="padding:24px;text-align:center"><div style="font-size:3rem">📚</div><h3 style="margin-top:12px">Homework Module</h3><p style="color:var(--text-muted);margin-top:8px;font-size:.85rem">Phase 2 — Assign homework per class, AI generates it automatically</p></div></div>
+    <div class="page" id="page-exams"><div class="table-card" style="padding:24px;text-align:center"><div style="font-size:3rem">📝</div><h3 style="margin-top:12px">Exam Papers</h3><p style="color:var(--text-muted);margin-top:8px;font-size:.85rem">AI generates exam papers with school monogram. Phase 2.</p></div></div>
+    <div class="page" id="page-fees"><div class="table-card" style="padding:24px;text-align:center"><div style="font-size:3rem">💰</div><h3 style="margin-top:12px">Fee Management</h3><p style="color:var(--text-muted);margin-top:8px;font-size:.85rem">Phase 2 — Collect fees, send reminders via WhatsApp</p></div></div>
+    <div class="page" id="page-feereports"><div class="table-card" style="padding:24px;text-align:center"><div style="font-size:3rem">📈</div><h3 style="margin-top:12px">Fee Reports</h3><p style="color:var(--text-muted);margin-top:8px;font-size:.85rem">Charts and analytics — Phase 2</p></div></div>
+    <div class="page" id="page-idcards"><div class="table-card" style="padding:24px;text-align:center"><div style="font-size:3rem">🪪</div><h3 style="margin-top:12px">ID Cards</h3><p style="color:var(--text-muted);margin-top:8px;font-size:.85rem">Generate printable ID cards with QR code — Phase 2. Or ask AI Assistant!</p></div></div>
+    <div class="page" id="page-certificates"><div class="table-card" style="padding:24px;text-align:center"><div style="font-size:3rem">🏅</div><h3 style="margin-top:12px">Certificates</h3><p style="color:var(--text-muted);margin-top:8px;font-size:.85rem">Phase 2</p></div></div>
+    <div class="page" id="page-notices"><div class="table-card" style="padding:24px;text-align:center"><div style="font-size:3rem">🔔</div><h3 style="margin-top:12px">Notices</h3><p style="color:var(--text-muted);margin-top:8px;font-size:.85rem">Send notices with school monogram — Phase 2. Or use AI Assistant!</p></div></div>
+    <div class="page" id="page-permissions">
+      <div class="table-card" style="padding:20px">
+        <h3 style="margin-bottom:16px">🔐 Download Permissions</h3>
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:16px">Control who can download documents. Only Admin can grant or revoke.</p>
+        <div id="permissionsList">
+          <div style="text-align:center;color:var(--text-muted);padding:20px">No users to manage yet. Add teachers/parents first.</div>
+        </div>
+      </div>
+    </div>
+    <div class="page" id="page-settings">
+      <div class="table-card" style="padding:20px">
+        <h3 style="margin-bottom:16px">⚙️ Settings</h3>
+        <div class="form-group">
+          <label class="form-label">Font Size</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-outline" onclick="setFontSize('sm')">Small</button>
+            <button class="btn btn-outline" onclick="setFontSize('md')">Medium</button>
+            <button class="btn btn-outline" onclick="setFontSize('lg')">Large</button>
+            <button class="btn btn-outline" onclick="setFontSize('xl')">Extra Large</button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:16px">
+          <label class="form-label">UltraMsg Instance ID</label>
+          <input class="form-input" placeholder="Enter UltraMsg Instance ID" id="settingInstanceId">
+        </div>
+        <div class="form-group">
+          <label class="form-label">UltraMsg Token</label>
+          <input class="form-input" placeholder="Enter UltraMsg Token" id="settingToken">
+        </div>
+        <button class="btn btn-primary" onclick="saveUltraMsgSettings()">Save WhatsApp Config</button>
+      </div>
+    </div>
+
+  </div><!-- end main-content -->
+</div><!-- end appShell -->
+
+<!-- TOAST CONTAINER -->
+<div id="toastContainer"></div>
+
+<!-- ══ STUDENT MODAL ══ -->
+<div class="modal" id="studentModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="studentModalTitle">Add New Student</div>
+      <button class="modal-close" onclick="closeModal('studentModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="s_id">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input class="form-input" id="s_name" placeholder="Student name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Father's Name</label>
+          <input class="form-input" id="s_father" placeholder="Father's name">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Roll No *</label>
+          <input class="form-input" id="s_roll" placeholder="Roll number">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Class *</label>
+          <select class="form-input" id="s_class">
+            <option value="">Select Class</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option>
+            <option>5</option><option>6</option><option>7</option><option>8</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Section</label>
+          <select class="form-input" id="s_section">
+            <option value="">Select</option>
+            <option>A</option><option>B</option><option>C</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date of Birth 🎂</label>
+          <input class="form-input" id="s_dob" type="date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Parent's Phone (WhatsApp)</label>
+        <input class="form-input" id="s_phone" placeholder="03XX-XXXXXXX" type="tel">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <input class="form-input" id="s_address" placeholder="Home address">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fee Status</label>
+        <select class="form-input" id="s_fee">
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+          <option value="partial">Partial</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('studentModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStudent()">💾 Save Student</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TEACHER MODAL ══ -->
+<div class="modal" id="teacherModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="teacherModalTitle">Add Teacher</div>
+      <button class="modal-close" onclick="closeModal('teacherModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="t_id">
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input class="form-input" id="t_name" placeholder="Teacher name">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Subject</label>
+          <input class="form-input" id="t_subject" placeholder="e.g. Science">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input class="form-input" id="t_phone" placeholder="03XX-XXXXXXX" type="tel">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Qualification</label>
+        <input class="form-input" id="t_qual" placeholder="e.g. B.Ed, M.A">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('teacherModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTeacher()">💾 Save Teacher</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Font size control
+function setFontSize(size) {
+  document.body.className = document.body.className.replace(/font-\w+/g,'');
+  document.body.classList.add('font-' + size);
+  localStorage.setItem('fontSize', size);
+}
+// Restore font size
+const savedFont = localStorage.getItem('fontSize');
+if (savedFont) setFontSize(savedFont);
+
+// Session progress calculator
+function updateSessionProgress() {
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes();
+  const totalMins = (h * 60 + m);
+  const startMins = 8 * 60;
+  const endMins = 12 * 60;
+  let pct = 0, badge = 'School Over';
+  if (totalMins < startMins) { pct = 0; badge = 'Not Started'; }
+  else if (totalMins >= endMins) { pct = 100; badge = 'School Over'; }
+  else { pct = Math.round((totalMins - startMins) / (endMins - startMins) * 100); badge = 'Active'; }
+  const pb = document.getElementById('sessionProgress');
+  const sb = document.getElementById('sessionBadge');
+  if (pb) pb.style.width = pct + '%';
+  if (sb) { sb.textContent = badge + ' · ' + pct + '%'; sb.style.background = pct === 100 ? 'rgba(198,40,40,.2)' : 'rgba(46,125,50,.2)'; sb.style.color = pct === 100 ? '#ef9a9a' : '#81c784'; }
+}
+setInterval(updateSessionProgress, 10000);
+updateSessionProgress();
+
+// Demo WhatsApp test
+window.sendAttendanceDemo = function() {
+  if (students.length > 0) {
+    sendAttendanceAlert(students[0].id, 'absent');
+  } else {
+    showToast('Add a student first to test WhatsApp', 'info');
+  }
+};
+
+// Save UltraMsg settings
+window.saveUltraMsgSettings = function() {
+  const inst = document.getElementById('settingInstanceId')?.value;
+  const tok = document.getElementById('settingToken')?.value;
+  if (inst) ULTRAMSG_CONFIG.instanceId = inst;
+  if (tok) ULTRAMSG_CONFIG.token = tok;
+  localStorage.setItem('ultramsg_instance', inst);
+  localStorage.setItem('ultramsg_token', tok);
+  showToast('WhatsApp config saved!', 'success');
+};
+
+// Load saved UltraMsg settings
+const savedInstance = localStorage.getItem('ultramsg_instance');
+const savedToken = localStorage.getItem('ultramsg_token');
+if (savedInstance) ULTRAMSG_CONFIG.instanceId = savedInstance;
+if (savedToken) ULTRAMSG_CONFIG.token = savedToken;
+</script>
+</body>
+</html>
