@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Al-Fareed Public School</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--green:#1a7a3c;--green-dark:#0f5228;--green-light:#2ecc71;--gold:#f0c040;--gold-dark:#c8a000;--bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--border:#30363d;--text:#e6edf3;--text2:#8b949e;--red:#e74c3c;--blue:#3498db;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+/* HEADER */
+.header{background:linear-gradient(135deg,var(--green-dark),var(--green));padding:0 14px;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,.5);}
+.header-left{display:flex;align-items:center;gap:10px;}
+.logo-img{width:42px;height:42px;border-radius:50%;border:2px solid rgba(255,255,255,.4);object-fit:cover;cursor:pointer;flex-shrink:0;}
+.header-title{font-family:'Amiri',serif;font-size:15px;font-weight:700;color:#fff;line-height:1.2;}
+.header-title span{display:block;font-size:10px;color:rgba(255,255,255,.7);font-family:'Poppins',sans-serif;font-weight:400;}
+.hamburger{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;}
+.role-badge{background:var(--gold);color:var(--green-dark);font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;cursor:pointer;}
+/* SIDEBAR */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;}
+.overlay.open{display:block;}
+.sidebar{position:fixed;left:-285px;top:0;bottom:0;width:285px;background:var(--bg2);z-index:300;transition:left .3s;overflow-y:auto;border-right:1px solid var(--border);}
+.sidebar.open{left:0;}
+.sb-head{background:linear-gradient(135deg,var(--green-dark),var(--green));padding:18px 14px;display:flex;align-items:center;gap:12px;}
+.sb-logo{width:54px;height:54px;border-radius:50%;border:3px solid rgba(255,255,255,.4);object-fit:cover;flex-shrink:0;}
+.sb-name{font-family:'Amiri',serif;font-size:14px;font-weight:700;color:#fff;line-height:1.3;}
+.sb-name span{display:block;font-size:10px;color:rgba(255,255,255,.7);font-family:'Poppins',sans-serif;font-weight:400;}
+.sb-sec-title{font-size:10px;font-weight:600;color:var(--text2);padding:10px 14px 4px;letter-spacing:1px;text-transform:uppercase;}
+.sb-item{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;font-size:13px;color:var(--text);border:none;background:none;width:100%;text-align:left;transition:background .2s;}
+.sb-item:hover,.sb-item.active{background:rgba(26,122,60,.2);color:var(--green-light);}
+.sb-item.active{border-left:3px solid var(--green-light);}
+.sb-item span:first-child{font-size:18px;width:22px;text-align:center;}
+/* MAIN */
+.main{padding:14px;}
+.page{display:none;}.page.active{display:block;}
+/* DASHBOARD HERO */
+.dash-hero{background:linear-gradient(135deg,var(--green-dark),var(--green));border-radius:16px;padding:22px 16px;margin-bottom:14px;display:flex;flex-direction:column;align-items:center;box-shadow:0 4px 20px rgba(26,122,60,.4);}
+.dash-logo{width:90px;height:90px;border-radius:50%;border:4px solid rgba(255,255,255,.5);object-fit:cover;box-shadow:0 4px 20px rgba(0,0,0,.4);margin-bottom:10px;}
+.dash-sname{font-family:'Amiri',serif;font-size:20px;color:#fff;font-weight:700;text-align:center;}
+.dash-sub{font-size:11px;color:rgba(255,255,255,.8);margin-top:3px;}
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;}
+.stat-icon{font-size:26px;margin-bottom:6px;}
+.stat-num{font-size:26px;font-weight:700;color:var(--green-light);}
+.stat-lbl{font-size:11px;color:var(--text2);margin-top:3px;}
+/* QUICK */
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.qbtn{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .2s;color:var(--text);}
+.qbtn:hover{background:rgba(26,122,60,.2);border-color:var(--green);transform:translateY(-2px);}
+.qbtn-icon{font-size:22px;margin-bottom:5px;}
+.qbtn-lbl{font-size:11px;font-weight:500;}
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;}
+.card-title{font-size:15px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+/* FORMS */
+.fg{margin-bottom:11px;}
+.fl{font-size:11px;color:var(--text2);margin-bottom:4px;display:block;font-weight:500;}
+.fi,.fs,.fta{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-size:13px;font-family:'Poppins',sans-serif;outline:none;transition:border .2s;}
+.fi:focus,.fs:focus,.fta:focus{border-color:var(--green);}
+.fs option{background:var(--bg3);}
+.fta{resize:vertical;min-height:75px;}
+/* BUTTONS */
+.btn{padding:9px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:'Poppins',sans-serif;transition:all .2s;display:inline-flex;align-items:center;gap:6px;}
+.btn-g{background:var(--green);color:#fff;}.btn-g:hover{background:var(--green-dark);}
+.btn-gold{background:var(--gold);color:var(--green-dark);}.btn-gold:hover{background:var(--gold-dark);color:#fff;}
+.btn-r{background:var(--red);color:#fff;}
+.btn-b{background:var(--blue);color:#fff;}
+.btn-wa{background:#25D366;color:#fff;}.btn-wa:hover{background:#128C7E;}
+.btn-sm{padding:5px 10px;font-size:11px;}
+.btn-full{width:100%;justify-content:center;}
+/* TABLE */
+.tw{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{background:var(--bg3);padding:9px 7px;text-align:left;font-weight:600;color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
+td{padding:9px 7px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+/* BADGE */
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;}
+.bg-g{background:rgba(46,204,113,.15);color:var(--green-light);}
+.bg-r{background:rgba(231,76,60,.15);color:#e74c3c;}
+.bg-gold{background:rgba(240,192,64,.15);color:var(--gold);}
+.bg-b{background:rgba(52,152,219,.15);color:var(--blue);}
+/* ATTENDANCE */
+.att-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);}
+.att-row:last-child{border-bottom:none;}
+.att-name{font-size:13px;flex:1;}
+.att-roll{font-size:10px;color:var(--text2);}
+.att-btns{display:flex;gap:5px;}
+.att-btn{width:34px;height:34px;border-radius:7px;border:2px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:15px;transition:all .2s;display:flex;align-items:center;justify-content:center;}
+.att-btn.present{background:rgba(46,204,113,.2);border-color:var(--green-light);color:var(--green-light);}
+.att-btn.absent{background:rgba(231,76,60,.2);border-color:#e74c3c;color:#e74c3c;}
+.att-btn.leave{background:rgba(240,192,64,.2);border-color:var(--gold);color:var(--gold);}
+/* NOTICE */
+.notice-card{background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:10px;border-left:4px solid var(--green);}
+.notice-card.urgent{border-left-color:var(--red);}
+.notice-card.info{border-left-color:var(--blue);}
+.ntitle{font-size:13px;font-weight:600;margin-bottom:3px;}
+.nbody{font-size:12px;color:var(--text2);line-height:1.5;}
+.nmeta{font-size:10px;color:var(--text2);margin-top:7px;display:flex;justify-content:space-between;align-items:center;}
+/* AI CHAT */
+.chat-area{background:var(--bg3);border-radius:12px;padding:12px;min-height:200px;max-height:380px;overflow-y:auto;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;}
+.chat-msg{padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.55;max-width:92%;}
+.chat-msg.user{background:var(--green);color:#fff;align-self:flex-end;border-radius:10px 10px 2px 10px;}
+.chat-msg.ai{background:var(--bg2);border:1px solid var(--border);color:var(--text);align-self:flex-start;border-radius:10px 10px 10px 2px;}
+.chat-msg.ai .ai-header{font-size:10px;color:var(--green-light);font-weight:600;margin-bottom:5px;}
+.chat-input-row{display:flex;gap:8px;}
+.chat-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:'Poppins',sans-serif;outline:none;}
+.chat-input:focus{border-color:var(--green);}
+.chat-send{background:var(--green);border:none;color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:18px;}
+.typing-dots{display:flex;gap:4px;align-items:center;padding:4px 0;}
+.typing-dots span{width:7px;height:7px;border-radius:50%;background:var(--text2);animation:blink 1.2s infinite;}
+.typing-dots span:nth-child(2){animation-delay:.3s;}
+.typing-dots span:nth-child(3){animation-delay:.6s;}
+@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+/* FEE SUMMARY */
+.fee-sum{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
+.fsc{background:var(--bg3);border-radius:10px;padding:10px;text-align:center;}
+.fsc-num{font-size:17px;font-weight:700;}
+.fsc-lbl{font-size:10px;color:var(--text2);margin-top:3px;}
+/* TABS */
+.tabs{display:flex;gap:3px;margin-bottom:14px;background:var(--bg3);border-radius:10px;padding:3px;}
+.tab-btn{flex:1;padding:7px;border:none;background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:11px;font-weight:500;font-family:'Poppins',sans-serif;transition:all .2s;}
+.tab-btn.active{background:var(--green);color:#fff;}
+/* SEARCH */
+.search-wrap{position:relative;margin-bottom:12px;}
+.search-wrap input{padding-left:34px;}
+.search-wrap::before{content:'🔍';position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:13px;}
+/* RESULT ROW */
+.res-row{display:flex;gap:7px;margin-bottom:7px;align-items:center;}
+/* MODAL */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:500;display:none;align-items:center;justify-content:center;padding:14px;}
+.modal-ov.open{display:flex;}
+.modal{background:var(--bg2);border-radius:14px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto;border:1px solid var(--border);}
+.modal-hd{padding:14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:15px;font-weight:600;}
+.modal-close{background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;}
+.modal-bd{padding:14px;}
+.modal-ft{padding:14px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+/* EXAM PAPER */
+.paper-preview{background:#fff;color:#000;padding:20px;border-radius:8px;font-family:'Times New Roman',serif;}
+.paper-header{text-align:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:14px;}
+.paper-logo{width:60px;height:60px;border-radius:50%;margin:0 auto 8px;}
+.paper-school{font-size:14px;font-weight:bold;}
+.paper-sub{font-size:12px;}
+.paper-info{display:flex;justify-content:space-between;font-size:11px;margin-bottom:10px;}
+.paper-q{font-size:12px;line-height:1.8;}
+.paper-q .q-num{font-weight:bold;}
+/* ID CARD */
+.id-preview{background:linear-gradient(135deg,#1a3a2a,#0d1f15);border-radius:14px;padding:18px;text-align:center;border:2px solid var(--green);max-width:270px;margin:0 auto;}
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:9999;display:none;box-shadow:0 4px 20px rgba(0,0,0,.4);animation:suUp .3s ease;}
+@keyframes suUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+::-webkit-scrollbar{width:3px;height:3px;}
+::-webkit-scrollbar-thumb{background:var(--green);border-radius:2px;}
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sec-title{font-size:15px;font-weight:600;display:flex;align-items:center;gap:7px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <button class="hamburger" onclick="toggleSB()">☰</button>
+    <img class="logo-img" src="https://hussainghulam651-cmd.github.io/alfareed-school/monogram.png" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%231a7a3c%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23f0c040%22 font-size=%2222%22 font-weight=%22bold%22>AF</text></svg>'" alt="Logo" onclick="goTo('dashboard')" id="header-logo"/>
+    <div class="header-title">AL-FAREED<span>Public School, Tando Jam</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div class="role-badge">ADMIN</div>
+  </div>
+</div>
+
+<!-- OVERLAY + SIDEBAR -->
+<div class="overlay" id="overlay" onclick="toggleSB()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sb-head">
+    <img class="sb-logo" src="https://hussainghulam651-cmd.github.io/alfareed-school/monogram.png" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%231a7a3c%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23f0c040%22 font-size=%2222%22 font-weight=%22bold%22>AF</text></svg>'" alt="Logo"/>
+    <div><div class="sb-name">Al-Fareed Public School<span>Tando Jam, Sindh</span></div></div>
+  </div>
+  <div class="sb-sec-title">Main</div>
+  <button class="sb-item active" onclick="goTo('dashboard')"><span>🏠</span>Dashboard</button>
+  <button class="sb-item" onclick="goTo('students')"><span>👥</span>Students</button>
+  <button class="sb-item" onclick="goTo('teachers')"><span>👨‍🏫</span>Teachers</button>
+  <div class="sb-sec-title">Academic</div>
+  <button class="sb-item" onclick="goTo('attendance')"><span>✅</span>Attendance</button>
+  <button class="sb-item" onclick="goTo('results')"><span>📊</span>Results</button>
+  <button class="sb-item" onclick="goTo('homework')"><span>📚</span>Homework</button>
+  <div class="sb-sec-title">Finance</div>
+  <button class="sb-item" onclick="goTo('fees')"><span>💰</span>Fees</button>
+  <div class="sb-sec-title">Tools</div>
+  <button class="sb-item" onclick="goTo('assistant')"><span>🤖</span>AI Assistant</button>
+  <button class="sb-item" onclick="goTo('exampapers')"><span>📝</span>Exam Papers</button>
+  <button class="sb-item" onclick="goTo('notices')"><span>📢</span>Notice Board</button>
+  <button class="sb-item" onclick="goTo('idcards')"><span>🪪</span>ID Cards</button>
+  <div class="sb-sec-title">Settings</div>
+  <button class="sb-item" onclick="goTo('settings')"><span>⚙️</span>Settings</button>
+</div>
+
+<div class="main">
+
+<!-- ===== DASHBOARD ===== -->
+<div class="page active" id="page-dashboard">
+  <div class="dash-hero">
+    <img class="dash-logo" src="https://hussainghulam651-cmd.github.io/alfareed-school/monogram.png"
+      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%231a7a3c%22 stroke=%22%23f0c040%22 stroke-width=%223%22/><text x=%2250%22 y=%2242%22 text-anchor=%22middle%22 fill=%22%23f0c040%22 font-size=%228%22 font-weight=%22bold%22>AL-FAREED</text><text x=%2250%22 y=%2252%22 text-anchor=%22middle%22 fill=%22%23f0c040%22 font-size=%226%22>PUBLIC SCHOOL</text><text x=%2250%22 y=%2278%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%226%22>TANDO JAM</text></svg>'"
+      alt="Al-Fareed Monogram" id="dash-logo"/>
+    <div class="dash-sname">Al-Fareed Public School</div>
+    <div class="dash-sub">📍 Tando Jam, Sindh, Pakistan</div>
+    <div class="dash-sub" style="margin-top:4px;">Principal: Sir Ghulam Hussain</div>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-num" id="d-stu">0</div><div class="stat-lbl">Students</div></div>
+    <div class="stat-card"><div class="stat-icon">👨‍🏫</div><div class="stat-num" id="d-tch">0</div><div class="stat-lbl">Teachers</div></div>
+    <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num" id="d-att">0%</div><div class="stat-lbl">Today Att.</div></div>
+    <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-num" id="d-fee">0</div><div class="stat-lbl">Pending Fees</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">⚡ Quick Actions</div>
+    <div class="quick-grid">
+      <div class="qbtn" onclick="goTo('attendance')"><div class="qbtn-icon">✅</div><div class="qbtn-lbl">Attendance</div></div>
+      <div class="qbtn" onclick="goTo('fees')"><div class="qbtn-icon">💰</div><div class="qbtn-lbl">Collect Fee</div></div>
+      <div class="qbtn" onclick="goTo('results')"><div class="qbtn-icon">📊</div><div class="qbtn-lbl">Enter Result</div></div>
+      <div class="qbtn" onclick="goTo('notices')"><div class="qbtn-icon">📢</div><div class="qbtn-lbl">Notice Board</div></div>
+      <div class="qbtn" onclick="goTo('assistant')"><div class="qbtn-icon">🤖</div><div class="qbtn-lbl">AI Assistant</div></div>
+      <div class="qbtn" onclick="goTo('exampapers')"><div class="qbtn-icon">📝</div><div class="qbtn-lbl">Exam Paper</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== STUDENTS ===== -->
+<div class="page" id="page-students">
+  <div class="sec-hd"><div class="sec-title">👥 Students</div><button class="btn btn-g btn-sm" onclick="openM('m-add-stu')">+ Add</button></div>
+  <div class="search-wrap"><input class="fi" placeholder="Search..." oninput="searchStu(this.value)" id="stu-search"/></div>
+  <div class="card" style="padding:0;overflow:hidden;"><div class="tw"><table><thead><tr><th>#</th><th>Name</th><th>Class</th><th>Father</th><th>Act</th></tr></thead><tbody id="stu-tbody"></tbody></table></div></div>
+</div>
+
+<!-- ===== TEACHERS ===== -->
+<div class="page" id="page-teachers">
+  <div class="sec-hd"><div class="sec-title">👨‍🏫 Teachers</div><button class="btn btn-g btn-sm" onclick="openM('m-add-tch')">+ Add</button></div>
+  <div class="card" style="padding:0;overflow:hidden;"><div class="tw"><table><thead><tr><th>#</th><th>Name</th><th>Subject</th><th>Phone</th><th>Act</th></tr></thead><tbody id="tch-tbody"></tbody></table></div></div>
+</div>
+
+<!-- ===== ATTENDANCE ===== -->
+<div class="page" id="page-attendance">
+  <div class="sec-title" style="margin-bottom:12px;">✅ Attendance</div>
+  <div class="card">
+    <div class="fg"><label class="fl">Class</label><select class="fs" id="att-cls" onchange="loadAttStu()"><option value="">-- Select --</option><option>Play Group</option><option>Nursery</option><option>KG</option><option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Class 4</option><option>Class 5</option><option>Class 6</option><option>Class 7</option><option>Class 8</option></select></div>
+    <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="att-date"/></div>
+  </div>
+  <div id="att-list"></div>
+  <div id="att-btns" style="display:none;">
+    <button class="btn btn-g btn-full" style="margin-bottom:8px;" onclick="allPresent()">✅ All Present</button>
+    <button class="btn btn-gold btn-full" style="margin-bottom:8px;" onclick="saveAtt()">💾 Save Attendance</button>
+    <button class="btn btn-wa btn-full" onclick="attWA()">📲 Send via WhatsApp</button>
+  </div>
+</div>
+
+<!-- ===== RESULTS ===== -->
+<div class="page" id="page-results">
+  <div class="sec-title" style="margin-bottom:12px;">📊 Results</div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="resTab('enter')">Enter Marks</button>
+    <button class="tab-btn" onclick="resTab('view')">View Results</button>
+  </div>
+  <div id="res-enter">
+    <div class="card">
+      <div class="fg"><label class="fl">Student</label><select class="fs" id="r-stu"><option value="">-- Select --</option></select></div>
+      <div class="fg"><label class="fl">Exam</label><select class="fs" id="r-exam"><option>Monthly Test</option><option>Mid-Term</option><option>Annual Exam</option><option>Unit Test</option></select></div>
+      <div class="fg"><label class="fl">Year</label><input class="fi" type="number" id="r-year" value="2026"/></div>
+      <div class="card-title" style="margin-top:6px;">📚 Subjects & Marks</div>
+      <div id="res-subs">
+        <div class="res-row"><input class="fi" placeholder="Subject" value="Urdu"/><input class="fi" placeholder="Obt" type="number" style="width:70px;"/><input class="fi" placeholder="Max" type="number" value="100" style="width:70px;"/><button class="btn btn-r btn-sm" onclick="this.parentElement.remove()">✕</button></div>
+        <div class="res-row"><input class="fi" placeholder="Subject" value="English"/><input class="fi" placeholder="Obt" type="number" style="width:70px;"/><input class="fi" placeholder="Max" type="number" value="100" style="width:70px;"/><button class="btn btn-r btn-sm" onclick="this.parentElement.remove()">✕</button></div>
+        <div class="res-row"><input class="fi" placeholder="Subject" value="Math"/><input class="fi" placeholder="Obt" type="number" style="width:70px;"/><input class="fi" placeholder="Max" type="number" value="100" style="width:70px;"/><button class="btn btn-r btn-sm" onclick="this.parentElement.remove()">✕</button></div>
+        <div class="res-row"><input class="fi" placeholder="Subject" value="Science"/><input class="fi" placeholder="Obt" type="number" style="width:70px;"/><input class="fi" placeholder="Max" type="number" value="100" style="width:70px;"/><button class="btn btn-r btn-sm" onclick="this.parentElement.remove()">✕</button></div>
+        <div class="res-row"><input class="fi" placeholder="Subject" value="Islamiyat"/><input class="fi" placeholder="Obt" type="number" style="width:70px;"/><input class="fi" placeholder="Max" type="number" value="100" style="width:70px;"/><button class="btn btn-r btn-sm" onclick="this.parentElement.remove()">✕</button></div>
+      </div>
+      <button class="btn btn-b btn-sm" style="margin-top:8px;" onclick="addResRow()">+ Add Subject</button>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-g btn-full" onclick="saveRes()">💾 Save Result</button>
+        <button class="btn btn-wa btn-full" onclick="resWA()">📲 Send via WhatsApp</button>
+      </div>
+    </div>
+  </div>
+  <div id="res-view" style="display:none;">
+    <div class="card" style="padding:0;overflow:hidden;"><div class="tw"><table><thead><tr><th>Student</th><th>Exam</th><th>Marks</th><th>Grade</th><th>WA</th></tr></thead><tbody id="res-tbody"></tbody></table></div></div>
+  </div>
+</div>
+
+<!-- ===== HOMEWORK ===== -->
+<div class="page" id="page-homework">
+  <div class="sec-title" style="margin-bottom:12px;">📚 Homework</div>
+  <div class="card">
+    <div class="fg"><label class="fl">Class</label><select class="fs" id="hw-cls"><option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Class 4</option><option>Class 5</option><option>Class 6</option><option>Class 7</option><option>Class 8</option></select></div>
+    <div class="fg"><label class="fl">Subject</label><input class="fi" id="hw-sub" placeholder="Subject"/></div>
+    <div class="fg"><label class="fl">Homework</label><textarea class="fta" id="hw-txt" placeholder="Details..."></textarea></div>
+    <div class="fg"><label class="fl">Due Date</label><input class="fi" type="date" id="hw-date"/></div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="btn btn-g btn-full" onclick="saveHW()">💾 Save</button>
+      <button class="btn btn-wa btn-full" onclick="hwWA()">📲 Send to Parents</button>
+    </div>
+  </div>
+  <div id="hw-list"></div>
+</div>
+
+<!-- ===== FEES ===== -->
+<div class="page" id="page-fees">
+  <div class="sec-title" style="margin-bottom:12px;">💰 Fee Management</div>
+  <div class="fee-sum">
+    <div class="fsc"><div class="fsc-num" style="color:var(--green-light)" id="fc-col">0</div><div class="fsc-lbl">Collected</div></div>
+    <div class="fsc"><div class="fsc-num" style="color:var(--red)" id="fc-pen">0</div><div class="fsc-lbl">Pending</div></div>
+    <div class="fsc"><div class="fsc-num" style="color:var(--gold)" id="fc-tot">0</div><div class="fsc-lbl">Total</div></div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="feeTab('collect')">Collect</button>
+    <button class="tab-btn" onclick="feeTab('records')">Records</button>
+  </div>
+  <div id="fee-collect">
+    <div class="card">
+      <div class="fg"><label class="fl">Student</label><select class="fs" id="f-stu"><option value="">-- Select --</option></select></div>
+      <div class="fg"><label class="fl">Month</label><select class="fs" id="f-month"><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option></select></div>
+      <div class="fg"><label class="fl">Amount (Rs.)</label><input class="fi" type="number" id="f-amt" placeholder="500"/></div>
+      <div class="fg"><label class="fl">Status</label><select class="fs" id="f-status"><option value="paid">Paid ✅</option><option value="pending">Pending ⏳</option></select></div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-g btn-full" onclick="saveFee()">💾 Save</button>
+        <button class="btn btn-wa btn-full" onclick="feeReceiptWA()">📲 Send Receipt</button>
+        <button class="btn btn-r btn-full" onclick="feeReminderWA()">🔔 Reminder to Pending</button>
+      </div>
+    </div>
+  </div>
+  <div id="fee-records" style="display:none;">
+    <div class="card" style="padding:0;overflow:hidden;"><div class="tw"><table><thead><tr><th>Student</th><th>Month</th><th>Rs.</th><th>Status</th><th>WA</th></tr></thead><tbody id="fee-tbody"></tbody></table></div></div>
+  </div>
+</div>
+
+<!-- ===== AI ASSISTANT ===== -->
+<div class="page" id="page-assistant">
+  <div class="sec-title" style="margin-bottom:4px;">🤖 AI Assistant</div>
+  <div style="font-size:11px;color:var(--text2);margin-bottom:12px;">Al-Fareed School ka intelligent assistant</div>
+  <div class="chat-area" id="chat-area">
+    <div class="chat-msg ai">
+      <div class="ai-header">🤖 AL-FAREED AI</div>
+      Assalamu Alaikum Sir Ghulam Hussain! 🌟<br><br>
+      Main Al-Fareed Public School ka AI Assistant hun. Aap mujh se yeh kar sakte hain:<br><br>
+      • Student ka naam likhein → result card, ID card banega<br>
+      • "Class 5 attendance report" → summary milegi<br>
+      • "Notice likhain holiday ki" → notice draft hoga<br>
+      • "Science ke 10 sawal Class 7" → questions generate honge<br>
+      • Koi bhi school masla — main madad karunga!<br><br>
+      Kya karna hai?
+    </div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chat-input" placeholder="Kuch poochein..." onkeydown="if(event.key==='Enter')sendChat()"/>
+    <button class="chat-send" onclick="sendChat()">➤</button>
+  </div>
+  <div style="margin-top:10px;">
+    <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">Quick prompts:</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);" onclick="quickChat('Class 6 ki attendance summary do')">📋 Attendance</button>
+      <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);" onclick="quickChat('School ke liye ek general notice likhain')">📢 Notice Draft</button>
+      <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);" onclick="quickChat('Math Class 5 ke 10 sawal banao')">📝 Questions</button>
+      <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);" onclick="quickChat('Fee pending students ki list do')">💰 Pending Fees</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EXAM PAPERS ===== -->
+<div class="page" id="page-exampapers">
+  <div class="sec-title" style="margin-bottom:12px;">📝 Exam Paper Generator</div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="examTab('gen')">Generate</button>
+    <button class="tab-btn" onclick="examTab('preview')">Preview</button>
+  </div>
+  <div id="exam-gen">
+    <div class="card">
+      <div class="fg"><label class="fl">Class</label><select class="fs" id="ep-cls"><option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Class 4</option><option>Class 5</option><option>Class 6</option><option>Class 7</option><option>Class 8</option></select></div>
+      <div class="fg"><label class="fl">Subject</label><select class="fs" id="ep-sub"><option>Urdu</option><option>English</option><option>Math</option><option>Science</option><option>Islamiyat</option><option>Social Studies</option><option>Sindhi</option><option>Computer</option></select></div>
+      <div class="fg"><label class="fl">Exam Type</label><select class="fs" id="ep-type"><option>Monthly Test</option><option>Mid-Term Exam</option><option>Annual Exam</option><option>Unit Test</option></select></div>
+      <div class="fg"><label class="fl">Total Marks</label><input class="fi" type="number" id="ep-marks" value="50"/></div>
+      <div class="fg"><label class="fl">Time Allowed</label><input class="fi" id="ep-time" value="1.5 Hours"/></div>
+      <div class="fg"><label class="fl">Session</label><input class="fi" id="ep-session" value="2025-2026"/></div>
+      <div class="fg"><label class="fl">Special Instructions (optional)</label><textarea class="fta" id="ep-notes" placeholder="e.g. Chapter 1-3, focus on numerals..."></textarea></div>
+      <button class="btn btn-g btn-full" onclick="generatePaper()" id="gen-btn">🤖 Generate Paper with AI</button>
+    </div>
+  </div>
+  <div id="exam-preview" style="display:none;">
+    <div id="paper-output"></div>
+    <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+      <button class="btn btn-wa btn-full" onclick="paperWA()">📲 Send via WhatsApp</button>
+      <button class="btn btn-b btn-full" onclick="examTab('gen')">🔄 Generate New</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NOTICES ===== -->
+<div class="page" id="page-notices">
+  <div class="sec-title" style="margin-bottom:12px;">📢 Notice Board</div>
+  <!-- Notice with school monogram header preview -->
+  <div class="card" style="background:linear-gradient(135deg,var(--green-dark),var(--green));padding:14px;display:flex;align-items:center;gap:12px;">
+    <img src="https://hussainghulam651-cmd.github.io/alfareed-school/monogram.png"
+      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%231a7a3c%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23f0c040%22 font-size=%2222%22 font-weight=%22bold%22>AF</text></svg>'"
+      style="width:46px;height:46px;border-radius:50%;border:2px solid rgba(255,255,255,.5);" alt=""/>
+    <div>
+      <div style="font-family:'Amiri',serif;font-size:15px;font-weight:700;color:#fff;">Al-Fareed Public School</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.8);">Official Notice Board | Tando Jam</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px;">
+    <div class="fg"><label class="fl">Notice Title</label><input class="fi" id="nt-title" placeholder="e.g. Holiday Notice"/></div>
+    <div class="fg"><label class="fl">Notice Body</label><textarea class="fta" id="nt-body" placeholder="Write notice here..."></textarea></div>
+    <div class="fg"><label class="fl">Type</label><select class="fs" id="nt-type"><option value="">General</option><option value="urgent">Urgent 🔴</option><option value="info">Info 🔵</option></select></div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="btn btn-g btn-full" onclick="postNotice()">📌 Post Notice</button>
+      <button class="btn btn-wa btn-full" onclick="noticeWA()">📲 Send to All Parents</button>
+      <button class="btn btn-b btn-full" onclick="aiNotice()">🤖 AI se Notice Likhwao</button>
+    </div>
+  </div>
+  <div id="notices-list"></div>
+</div>
+
+<!-- ===== ID CARDS ===== -->
+<div class="page" id="page-idcards">
+  <div class="sec-title" style="margin-bottom:12px;">🪪 ID Cards</div>
+  <div class="card">
+    <div class="fg"><label class="fl">Select Student</label><select class="fs" id="idc-stu" onchange="previewID()"><option value="">-- Select --</option></select></div>
+  </div>
+  <div id="idc-area" style="display:none;">
+    <div class="id-preview">
+      <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:10px;">
+        <img src="https://hussainghulam651-cmd.github.io/alfareed-school/monogram.png"
+          onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%231a7a3c%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23f0c040%22 font-size=%2222%22 font-weight=%22bold%22>AF</text></svg>'"
+          style="width:40px;height:40px;border-radius:50%;border:2px solid var(--gold);" alt=""/>
+        <div style="text-align:left;">
+          <div style="font-family:'Amiri',serif;font-size:13px;font-weight:700;color:var(--gold);">Al-Fareed Public School</div>
+          <div style="font-size:9px;color:var(--text2);">Tando Jam, Sindh</div>
+        </div>
+      </div>
+      <div style="width:60px;height:60px;border-radius:50%;margin:0 auto 10px;background:var(--bg3);border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:28px;">👤</div>
+      <div style="font-size:16px;font-weight:700;color:#fff;" id="idc-name">-</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px;" id="idc-cls">-</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px;" id="idc-roll">Roll # -</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px;" id="idc-father">Father: -</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px;" id="idc-phone">📞 -</div>
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--text2);">Session: 2025-26</div>
+    </div>
+    <div style="margin-top:12px;"><button class="btn btn-wa btn-full" onclick="idcWA()">📲 Send ID Card via WhatsApp</button></div>
+  </div>
+</div>
+
+<!-- ===== SETTINGS ===== -->
+<div class="page" id="page-settings">
+  <div class="sec-title" style="margin-bottom:12px;">⚙️ Settings</div>
+  <div class="card">
+    <div class="card-title">📱 WhatsApp (UltraMsg)</div>
+    <p style="font-size:11px;color:var(--text2);margin-bottom:10px;">ultramsg.com par account banao, Instance ID aur Token lao.</p>
+    <div class="fg"><label class="fl">Instance ID</label><input class="fi" id="wa-inst" placeholder="instance12345"/></div>
+    <div class="fg"><label class="fl">Token</label><input class="fi" id="wa-tok" placeholder="Enter token"/></div>
+    <button class="btn btn-g btn-full" onclick="saveWA()">💾 Save</button>
+  </div>
+  <div class="card" style="margin-top:14px;">
+    <div class="card-title">🔑 Groq API Key (AI ke liye)</div>
+    <p style="font-size:11px;color:var(--text2);margin-bottom:10px;">console.groq.com par free API key banao.</p>
+    <div class="fg"><label class="fl">Groq API Key</label><input class="fi" id="groq-key" placeholder="gsk_..."/></div>
+    <button class="btn btn-g btn-full" onclick="saveGroq()">💾 Save API Key</button>
+  </div>
+  <div class="card" style="margin-top:14px;">
+    <div class="card-title">🏫 School Info</div>
+    <div class="fg"><label class="fl">Principal Name</label><input class="fi" id="principal" value="Sir Ghulam Hussain"/></div>
+    <div class="fg"><label class="fl">School Phone</label><input class="fi" id="sch-phone" placeholder="+92..."/></div>
+    <button class="btn btn-g btn-full" onclick="saveSch()">💾 Save</button>
+  </div>
+  <div class="card" style="margin-top:14px;">
+    <div class="card-title">🗑️ Data</div>
+    <button class="btn btn-r btn-full" onclick="clearData()">⚠️ Clear All Data</button>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- MODALS -->
+<div class="modal-ov" id="m-add-stu">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">👤 Add Student</div><button class="modal-close" onclick="closeM('m-add-stu')">✕</button></div>
+    <div class="modal-bd">
+      <div class="fg"><label class="fl">Full Name *</label><input class="fi" id="s-name" placeholder="Student name"/></div>
+      <div class="fg"><label class="fl">Father Name *</label><input class="fi" id="s-dad" placeholder="Father name"/></div>
+      <div class="fg"><label class="fl">Class</label><select class="fs" id="s-cls"><option>Play Group</option><option>Nursery</option><option>KG</option><option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Class 4</option><option>Class 5</option><option>Class 6</option><option>Class 7</option><option>Class 8</option></select></div>
+      <div class="fg"><label class="fl">Section</label><input class="fi" id="s-sec" placeholder="A / B"/></div>
+      <div class="fg"><label class="fl">Parent WhatsApp</label><input class="fi" id="s-ph" placeholder="+923001234567"/></div>
+      <div class="fg"><label class="fl">Monthly Fee (Rs.)</label><input class="fi" type="number" id="s-fee" placeholder="500"/></div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-g" onclick="addStu()">✅ Add</button></div>
+  </div>
+</div>
+
+<div class="modal-ov" id="m-add-tch">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">👨‍🏫 Add Teacher</div><button class="modal-close" onclick="closeM('m-add-tch')">✕</button></div>
+    <div class="modal-bd">
+      <div class="fg"><label class="fl">Full Name *</label><input class="fi" id="t-name" placeholder="Teacher name"/></div>
+      <div class="fg"><label class="fl">Subject</label><input class="fi" id="t-sub" placeholder="Subject"/></div>
+      <div class="fg"><label class="fl">Phone (WhatsApp)</label><input class="fi" id="t-ph" placeholder="+923001234567"/></div>
+      <div class="fg"><label class="fl">Salary</label><input class="fi" type="number" id="t-sal" placeholder="15000"/></div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-g" onclick="addTch()">✅ Add</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ DB ============
+let db = {stu:[],tch:[],att:{},res:[],fees:[],notices:[],hw:[],wa:{inst:'',tok:''},groq:'',sch:{principal:'Sir Ghulam Hussain',phone:''}};
+let attState = {};
+let paperText = '';
+
+function sv(){localStorage.setItem('afdb4',JSON.stringify(db));}
+function ld(){
+  const d=localStorage.getItem('afdb4');
+  if(d) db=JSON.parse(d);
+  updDash();rStu();rTch();rFeeRec();rRes();rNotices();rHW();popSelects();ldSettings();
+}
+
+// ============ UI ============
+function toggleSB(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('open');}
+function goTo(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(b=>{if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+p+"'"))b.classList.add('active');});
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+function openM(id){document.getElementById(id).classList.add('open');}
+function closeM(id){document.getElementById(id).classList.remove('open');}
+function toast(msg,c='#1a7a3c'){const t=document.getElementById('toast');t.textContent=msg;t.style.background=c;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+
+// ============ DASHBOARD ============
+function updDash(){
+  document.getElementById('d-stu').textContent=db.stu.length;
+  document.getElementById('d-tch').textContent=db.tch.length;
+  const today=new Date().toISOString().split('T')[0];
+  const ta=db.att[today];
+  if(ta){const p=Object.values(ta).filter(v=>v==='P').length,tot=Object.values(ta).length;document.getElementById('d-att').textContent=tot>0?Math.round(p/tot*100)+'%':'0%';}
+  document.getElementById('d-fee').textContent=db.fees.filter(f=>f.status==='pending').length;
+  updFeeSummary();
+}
+function updFeeSummary(){
+  const col=db.fees.filter(f=>f.status==='paid').reduce((s,f)=>s+Number(f.amt),0);
+  const pen=db.fees.filter(f=>f.status==='pending').reduce((s,f)=>s+Number(f.amt),0);
+  if(document.getElementById('fc-col')){document.getElementById('fc-col').textContent='Rs.'+col;document.getElementById('fc-pen').textContent='Rs.'+pen;document.getElementById('fc-tot').textContent='Rs.'+(col+pen);}
+}
+
+// ============ STUDENTS ============
+function addStu(){
+  const name=document.getElementById('s-name').value.trim();
+  const dad=document.getElementById('s-dad').value.trim();
+  if(!name||!dad)return toast('Name aur Father name zaruri!','#e74c3c');
+  const roll=db.stu.length+1;
+  db.stu.push({id:Date.now(),name,dad,cls:document.getElementById('s-cls').value,sec:document.getElementById('s-sec').value,ph:document.getElementById('s-ph').value,fee:document.getElementById('s-fee').value,roll});
+  sv();rStu();popSelects();updDash();closeM('m-add-stu');
+  ['s-name','s-dad','s-sec','s-ph','s-fee'].forEach(i=>document.getElementById(i).value='');
+  toast('✅ Student add ho gaya!');
+}
+function rStu(filter=''){
+  const list=filter?db.stu.filter(s=>s.name.toLowerCase().includes(filter.toLowerCase())):db.stu;
+  document.getElementById('stu-tbody').innerHTML=list.map((s,i)=>`<tr><td>${s.roll||i+1}</td><td><b>${s.name}</b></td><td>${s.cls}</td><td>${s.dad}</td><td><button class="btn btn-r btn-sm" onclick="delStu(${s.id})">🗑</button></td></tr>`).join('');
+}
+function searchStu(v){rStu(v);}
+function delStu(id){if(!confirm('Delete?'))return;db.stu=db.stu.filter(s=>s.id!==id);sv();rStu();popSelects();updDash();}
+
+// ============ TEACHERS ============
+function addTch(){
+  const name=document.getElementById('t-name').value.trim();
+  if(!name)return toast('Name zaruri!','#e74c3c');
+  db.tch.push({id:Date.now(),name,sub:document.getElementById('t-sub').value,ph:document.getElementById('t-ph').value,sal:document.getElementById('t-sal').value});
+  sv();rTch();updDash();closeM('m-add-tch');
+  ['t-name','t-sub','t-ph','t-sal'].forEach(i=>document.getElementById(i).value='');
+  toast('✅ Teacher add ho gaya!');
+}
+function rTch(){
+  document.getElementById('tch-tbody').innerHTML=db.tch.map((t,i)=>`<tr><td>${i+1}</td><td><b>${t.name}</b></td><td>${t.sub||'-'}</td><td>${t.ph||'-'}</td><td><button class="btn btn-r btn-sm" onclick="delTch(${t.id})">🗑</button></td></tr>`).join('');
+}
+function delTch(id){if(!confirm('Delete?'))return;db.tch=db.tch.filter(t=>t.id!==id);sv();rTch();updDash();}
+
+// ============ ATTENDANCE ============
+function loadAttStu(){
+  const cls=document.getElementById('att-cls').value;
+  if(!cls)return;
+  const stus=db.stu.filter(s=>s.cls===cls);
+  if(!stus.length){document.getElementById('att-list').innerHTML='<div class="card" style="text-align:center;color:var(--text2);">Is class mein students nahi. Pehle add karein.</div>';document.getElementById('att-btns').style.display='none';return;}
+  attState={};stus.forEach(s=>attState[s.id]='P');
+  document.getElementById('att-list').innerHTML=`<div class="card">${stus.map(s=>`<div class="att-row"><div><div class="att-name">${s.name}</div><div class="att-roll">Roll #${s.roll||'-'} | ${s.cls}</div></div><div class="att-btns"><button class="att-btn present" id="ap-${s.id}" onclick="setAtt(${s.id},'P')">✓</button><button class="att-btn" id="aa-${s.id}" onclick="setAtt(${s.id},'A')">✗</button><button class="att-btn" id="al-${s.id}" onclick="setAtt(${s.id},'L')">L</button></div></div>`).join('')}</div>`;
+  document.getElementById('att-btns').style.display='block';
+}
+function setAtt(id,st){
+  attState[id]=st;
+  ['P','A','L'].forEach(s=>{const b=document.getElementById(`a${s.toLowerCase()}-${id}`);if(b){b.className='att-btn';if(s===st)b.className+=' '+(s==='P'?'present':s==='A'?'absent':'leave');}});
+}
+function allPresent(){Object.keys(attState).forEach(id=>setAtt(Number(id),'P'));}
+function saveAtt(){
+  const dt=document.getElementById('att-date').value,cls=document.getElementById('att-cls').value;
+  if(!dt||!cls)return toast('Date aur class select karein','#e74c3c');
+  if(!db.att[dt])db.att[dt]={};Object.assign(db.att[dt],attState);sv();updDash();toast('✅ Attendance save ho gayi!');
+}
+function attWA(){
+  const cls=document.getElementById('att-cls').value,dt=document.getElementById('att-date').value;
+  const stus=db.stu.filter(s=>s.cls===cls);
+  let msg=`📋 *Al-Fareed Public School*\n✅ Attendance\n📅 ${dt} | 🎓 ${cls}\n\n`;
+  stus.forEach(s=>msg+=`• ${s.name}: ${attState[s.id]==='P'?'✅ Present':attState[s.id]==='A'?'❌ Absent':'📝 Leave'}\n`);
+  const p=Object.values(attState).filter(v=>v==='P').length;
+  msg+=`\n📊 Present: ${p}/${stus.length}\n_Al-Fareed Public School, Tando Jam_`;
+  waOpen(msg);
+}
+
+// ============ RESULTS ============
+function resTab(t){
+  document.getElementById('res-enter').style.display=t==='enter'?'block':'none';
+  document.getElementById('res-view').style.display=t==='view'?'block':'none';
+  document.querySelectorAll('#page-results .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===(t==='enter'?0:1)));
+  if(t==='view')rRes();
+}
+function addResRow(){const d=document.createElement('div');d.className='res-row';d.innerHTML=`<input class="fi" placeholder="Subject"/><input class="fi" placeholder="Obt" type="number" style="width:70px;"/><input class="fi" placeholder="Max" type="number" value="100" style="width:70px;"/><button class="btn btn-r btn-sm" onclick="this.parentElement.remove()">✕</button>`;document.getElementById('res-subs').appendChild(d);}
+function saveRes(){
+  const sid=document.getElementById('r-stu').value;if(!sid)return toast('Student select karein','#e74c3c');
+  const rows=document.querySelectorAll('#res-subs .res-row');const subs=[];let to=0,tm=0;
+  rows.forEach(r=>{const inp=r.querySelectorAll('input');const s=inp[0].value.trim(),o=Number(inp[1].value)||0,m=Number(inp[2].value)||100;if(s){subs.push({s,o,m});to+=o;tm+=m;}});
+  if(!subs.length)return toast('Subjects enter karein','#e74c3c');
+  const pct=Math.round(to/tm*100),grade=pct>=80?'A+':pct>=70?'A':pct>=60?'B':pct>=50?'C':pct>=40?'D':'F';
+  const stu=db.stu.find(s=>s.id==sid);
+  db.res.push({id:Date.now(),sid,sname:stu?.name||'',exam:document.getElementById('r-exam').value,yr:document.getElementById('r-year').value,subs,to,tm,pct,grade});
+  sv();rRes();toast('✅ Result save ho gaya!');
+}
+function rRes(){
+  if(!document.getElementById('res-tbody'))return;
+  document.getElementById('res-tbody').innerHTML=db.res.map(r=>`<tr><td>${r.sname}</td><td>${r.exam}</td><td>${r.to}/${r.tm}</td><td><span class="badge ${r.grade==='F'?'bg-r':r.grade.startsWith('A')?'bg-g':'bg-gold'}">${r.grade} (${r.pct}%)</span></td><td><button class="btn btn-wa btn-sm" onclick="singleResWA(${r.id})">📲</button></td></tr>`).join('');
+}
+function resWA(){
+  const sid=document.getElementById('r-stu').value;const stu=db.stu.find(s=>s.id==sid);
+  if(!stu)return toast('Student select karein','#e74c3c');
+  const rows=document.querySelectorAll('#res-subs .res-row');let msg=`📊 *Al-Fareed Public School*\n🎓 Result Card\n\n*Student:* ${stu.name}\n*Class:* ${stu.cls}\n*Exam:* ${document.getElementById('r-exam').value}\n\n`;
+  let to=0,tm=0;
+  rows.forEach(r=>{const inp=r.querySelectorAll('input');const s=inp[0].value.trim(),o=Number(inp[1].value)||0,m=Number(inp[2].value)||100;if(s){msg+=`• ${s}: ${o}/${m}\n`;to+=o;tm+=m;}});
+  const pct=tm>0?Math.round(to/tm*100):0,grade=pct>=80?'A+':pct>=70?'A':pct>=60?'B':pct>=50?'C':pct>=40?'D':'F';
+  msg+=`\n*Total:* ${to}/${tm}\n*%:* ${pct}%\n*Grade:* ${grade}\n\n_Al-Fareed Public School, Tando Jam_`;
+  waOpenStu(stu,msg);
+}
+function singleResWA(id){
+  const r=db.res.find(x=>x.id===id);if(!r)return;
+  const stu=db.stu.find(s=>s.id==r.sid);
+  let msg=`📊 *Al-Fareed Public School*\n*${r.sname}* | ${r.exam}\n\n`;
+  r.subs.forEach(s=>msg+=`• ${s.s}: ${s.o}/${s.m}\n`);
+  msg+=`\n*Total:* ${r.to}/${r.tm} | *${r.grade}* (${r.pct}%)\n_Al-Fareed Public School_`;
+  waOpenStu(stu,msg);
+}
+
+// ============ HOMEWORK ============
+function saveHW(){
+  const sub=document.getElementById('hw-sub').value.trim(),txt=document.getElementById('hw-txt').value.trim();
+  if(!sub||!txt)return toast('Subject aur details zaruri!','#e74c3c');
+  db.hw.push({id:Date.now(),cls:document.getElementById('hw-cls').value,sub,txt,dt:document.getElementById('hw-date').value});
+  sv();rHW();toast('✅ Saved!');
+}
+function rHW(){
+  const el=document.getElementById('hw-list');if(!el)return;
+  el.innerHTML=db.hw.slice().reverse().map(h=>`<div class="notice-card info"><div class="ntitle">📚 ${h.sub} — ${h.cls}</div><div class="nbody">${h.txt}</div><div class="nmeta"><span>Due: ${h.dt||'-'}</span><button class="btn btn-r btn-sm" onclick="delHW(${h.id})">🗑</button></div></div>`).join('');
+}
+function delHW(id){db.hw=db.hw.filter(h=>h.id!==id);sv();rHW();}
+function hwWA(){
+  const msg=`📚 *Al-Fareed Public School*\n📝 Homework\n\n*Class:* ${document.getElementById('hw-cls').value}\n*Subject:* ${document.getElementById('hw-sub').value}\n*Homework:* ${document.getElementById('hw-txt').value}\n*Due:* ${document.getElementById('hw-date').value}\n\n_Al-Fareed Public School, Tando Jam_`;
+  waOpen(msg);
+}
+
+// ============ FEES ============
+function feeTab(t){
+  document.getElementById('fee-collect').style.display=t==='collect'?'block':'none';
+  document.getElementById('fee-records').style.display=t==='records'?'block':'none';
+  document.querySelectorAll('#page-fees .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===(t==='collect'?0:1)));
+  if(t==='records')rFeeRec();
+}
+function saveFee(){
+  const sid=document.getElementById('f-stu').value,amt=document.getElementById('f-amt').value;
+  if(!sid||!amt)return toast('Student aur amount zaruri!','#e74c3c');
+  const stu=db.stu.find(s=>s.id==sid);
+  db.fees.push({id:Date.now(),sid,sname:stu?.name||'',month:document.getElementById('f-month').value,amt,status:document.getElementById('f-status').value,dt:new Date().toLocaleDateString()});
+  sv();rFeeRec();updDash();toast('✅ Fee save ho gayi!');
+}
+function rFeeRec(){
+  if(!document.getElementById('fee-tbody'))return;
+  document.getElementById('fee-tbody').innerHTML=db.fees.map(f=>`<tr><td>${f.sname}</td><td>${f.month}</td><td>Rs.${f.amt}</td><td><span class="badge ${f.status==='paid'?'bg-g':'bg-r'}">${f.status==='paid'?'Paid':'Pending'}</span></td><td><button class="btn btn-wa btn-sm" onclick="singleFeeWA(${f.id})">📲</button></td></tr>`).join('');
+}
+function feeReceiptWA(){
+  const sid=document.getElementById('f-stu').value;const stu=db.stu.find(s=>s.id==sid);
+  if(!stu)return toast('Student select karein','#e74c3c');
+  const msg=`🧾 *Al-Fareed Public School*\n💰 Fee Receipt\n\n*Student:* ${stu.name}\n*Class:* ${stu.cls}\n*Month:* ${document.getElementById('f-month').value}\n*Amount:* Rs. ${document.getElementById('f-amt').value}\n*Status:* ${document.getElementById('f-status').value==='paid'?'✅ PAID':'⏳ PENDING'}\n*Date:* ${new Date().toLocaleDateString()}\n\n_Al-Fareed Public School, Tando Jam_`;
+  waOpenStu(stu,msg);
+}
+function feeReminderWA(){
+  const pend=db.fees.filter(f=>f.status==='pending');
+  if(!pend.length)return toast('Koi pending fee nahi!','#f0c040');
+  pend.forEach(f=>{const stu=db.stu.find(s=>s.id==f.sid);if(stu?.ph){const msg=`🔔 *Fee Reminder*\n*Al-Fareed Public School*\n\n${stu.name} ki ${f.month} fee Rs.${f.amt} pending hai.\nKripya jald ada karein.\n\n_Tando Jam_`;waOpenStu(stu,msg);}});
+  toast('Reminders bheje ja rahe hain...','#25D366');
+}
+function singleFeeWA(id){const f=db.fees.find(x=>x.id===id);const stu=db.stu.find(s=>s.id==f.sid);const msg=`🧾 *${f.sname}* | ${f.month}\nRs.${f.amt} | ${f.status==='paid'?'✅ Paid':'⏳ Pending'}\n_Al-Fareed School_`;waOpenStu(stu,msg);}
+
+// ============ NOTICES ============
+function postNotice(){
+  const title=document.getElementById('nt-title').value.trim(),body=document.getElementById('nt-body').value.trim();
+  if(!title||!body)return toast('Title aur body zaruri!','#e74c3c');
+  db.notices.push({id:Date.now(),title,body,type:document.getElementById('nt-type').value,dt:new Date().toLocaleDateString()});
+  sv();rNotices();document.getElementById('nt-title').value='';document.getElementById('nt-body').value='';toast('✅ Notice posted!');
+}
+function rNotices(){
+  const el=document.getElementById('notices-list');if(!el)return;
+  el.innerHTML=db.notices.slice().reverse().map(n=>`<div class="notice-card ${n.type}"><div class="ntitle">${n.title}</div><div class="nbody">${n.body}</div><div class="nmeta"><span>📅 ${n.dt}</span><div style="display:flex;gap:5px;"><button class="btn btn-wa btn-sm" onclick="singleNoticeWA(${n.id})">📲</button><button class="btn btn-r btn-sm" onclick="delNotice(${n.id})">🗑</button></div></div></div>`).join('');
+}
+function delNotice(id){db.notices=db.notices.filter(n=>n.id!==id);sv();rNotices();}
+function noticeWA(){
+  const title=document.getElementById('nt-title').value||'Notice';
+  const body=document.getElementById('nt-body').value||'Please check notice board.';
+  const msg=`📢 *Al-Fareed Public School*\n📋 Notice\n\n*${title}*\n\n${body}\n\n📅 ${new Date().toLocaleDateString()}\n_Al-Fareed Public School, Tando Jam_`;
+  waOpen(msg);
+}
+function singleNoticeWA(id){const n=db.notices.find(x=>x.id===id);const msg=`📢 *Al-Fareed Public School*\n\n*${n.title}*\n\n${n.body}\n\n📅 ${n.dt}\n_Al-Fareed Public School, Tando Jam_`;waOpen(msg);}
+async function aiNotice(){
+  const topic=document.getElementById('nt-title').value||'holiday';
+  document.getElementById('nt-body').value='✍️ AI likh raha hai...';
+  const txt=await aiCall(`Write a formal school notice in Urdu and English for Al-Fareed Public School Tando Jam about: "${topic}". Keep it brief, formal, signed by Principal Sir Ghulam Hussain.`);
+  document.getElementById('nt-body').value=txt;
+  toast('✅ AI ne notice likha!');
+}
+
+// ============ ID CARDS ============
+function previewID(){
+  const sid=document.getElementById('idc-stu').value;const stu=db.stu.find(s=>s.id==sid);if(!stu)return;
+  document.getElementById('idc-name').textContent=stu.name;
+  document.getElementById('idc-cls').textContent='Class: '+stu.cls+(stu.sec?' - '+stu.sec:'');
+  document.getElementById('idc-roll').textContent='Roll # '+(stu.roll||'-');
+  document.getElementById('idc-father').textContent='Father: '+stu.dad;
+  document.getElementById('idc-phone').textContent='📞 '+(stu.ph||'-');
+  document.getElementById('idc-area').style.display='block';
+}
+function idcWA(){
+  const sid=document.getElementById('idc-stu').value;const stu=db.stu.find(s=>s.id==sid);if(!stu)return;
+  const msg=`🪪 *Al-Fareed Public School*\n📋 ID Card\n\n*Name:* ${stu.name}\n*Father:* ${stu.dad}\n*Class:* ${stu.cls}${stu.sec?' - '+stu.sec:''}\n*Roll #:* ${stu.roll||'-'}\n*Session:* 2025-26\n*School:* Al-Fareed Public School, Tando Jam\n\n_Official ID Card_`;
+  waOpenStu(stu,msg);
+}
+
+// ============ AI ASSISTANT ============
+async function sendChat(){
+  const inp=document.getElementById('chat-input');
+  const msg=inp.value.trim();if(!msg)return;
+  inp.value='';addChatMsg(msg,'user');
+  // typing indicator
+  const typId='typ'+Date.now();
+  document.getElementById('chat-area').innerHTML+=`<div class="chat-msg ai" id="${typId}"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  scrollChat();
+  // Build context about school data
+  const ctx=buildContext(msg);
+  const reply=await aiCall(ctx);
+  document.getElementById(typId).remove();
+  addChatMsg(reply,'ai');
+}
+function quickChat(msg){document.getElementById('chat-input').value=msg;sendChat();}
+function addChatMsg(msg,who){
+  const area=document.getElementById('chat-area');
+  const d=document.createElement('div');
+  d.className=`chat-msg ${who}`;
+  if(who==='ai'){d.innerHTML=`<div class="ai-header">🤖 AL-FAREED AI</div>${msg.replace(/\n/g,'<br/>').replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\*(.*?)\*/g,'<b>$1</b>')}`;}
+  else d.textContent=msg;
+  area.appendChild(d);scrollChat();
+}
+function scrollChat(){const a=document.getElementById('chat-area');a.scrollTop=a.scrollHeight;}
+function buildContext(userMsg){
+  const stuList=db.stu.slice(0,20).map(s=>`${s.name} (${s.cls}, Roll:${s.roll||'-'}, Father:${s.dad}, Ph:${s.ph||'-'})`).join(', ');
+  const today=new Date().toISOString().split('T')[0];
+  const todayAtt=db.att[today]?`Today attendance: ${Object.values(db.att[today]).filter(v=>v==='P').length} present out of ${Object.values(db.att[today]).length}`:'No attendance today';
+  const pendFees=db.fees.filter(f=>f.status==='pending').map(f=>`${f.sname} (${f.month}, Rs.${f.amt})`).join(', ')||'None';
+  return `You are the official AI assistant of Al-Fareed Public School, Tando Jam, Sindh, Pakistan. Principal: Sir Ghulam Hussain. Reply in mix of Urdu (Roman Urdu) and English like Pakistani teachers speak. Be helpful, friendly, concise.
+
+SCHOOL DATA:
+- Total Students: ${db.stu.length}
+- Total Teachers: ${db.tch.length}
+- Students list: ${stuList||'No students yet'}
+- ${todayAtt}
+- Pending fees: ${pendFees}
+
+USER QUESTION: ${userMsg}
+
+Provide a helpful answer. For exam questions/papers, give properly formatted questions. For notices, write formal notice text. For attendance/fee queries, use the data above.`;
+}
+
+// ============ EXAM PAPER GENERATOR ============
+async function generatePaper(){
+  const cls=document.getElementById('ep-cls').value;
+  const sub=document.getElementById('ep-sub').value;
+  const type=document.getElementById('ep-type').value;
+  const marks=document.getElementById('ep-marks').value;
+  const time=document.getElementById('ep-time').value;
+  const session=document.getElementById('ep-session').value;
+  const notes=document.getElementById('ep-notes').value;
+  const btn=document.getElementById('gen-btn');
+  btn.textContent='⏳ Generating...';btn.disabled=true;
+  const prompt=`Generate a complete ${type} exam paper for ${sub}, ${cls} students of Al-Fareed Public School, Tando Jam.
+Total Marks: ${marks}, Time: ${time}, Session: ${session}
+${notes?'Special notes: '+notes:''}
+
+Format with:
+1. Section A: Multiple Choice Questions (MCQs) - 4-5 questions
+2. Section B: Short Questions - 4-5 questions  
+3. Section C: Long Questions - 2-3 questions (for annual/mid-term)
+
+Each question should be appropriate for Pakistani curriculum (${cls} level). Include marks for each question. Use simple clear language. Mix Urdu terms where natural for subject.`;
+
+  const result=await aiCall(prompt);
+  btn.textContent='🤖 Generate Paper with AI';btn.disabled=false;
+  if(!result||result.startsWith('❌'))return toast('API key nahi hai! Settings mein Groq key add karein.','#e74c3c');
+  paperText=result;
+  // Show preview
+  const dt=new Date().toLocaleDateString('en-PK');
+  document.getElementById('paper-output').innerHTML=`
+    <div class="paper-preview">
+      <div class="paper-header">
+        <img src="https://hussainghulam651-cmd.github.io/alfareed-school/monogram.png"
+          onerror="this.style.display='none'" class="paper-logo" alt=""/>
+        <div class="paper-school">AL-FAREED PUBLIC SCHOOL</div>
+        <div class="paper-sub">Tando Jam, Sindh, Pakistan</div>
+        <div style="margin-top:6px;font-weight:bold;">${type.toUpperCase()} — ${sub.toUpperCase()}</div>
+        <div class="paper-info" style="margin-top:8px;">
+          <span>Class: ${cls}</span>
+          <span>Total Marks: ${marks}</span>
+          <span>Time: ${time}</span>
+        </div>
+        <div class="paper-info">
+          <span>Session: ${session}</span>
+          <span>Date: ___________</span>
+          <span>Name: ___________</span>
+        </div>
+      </div>
+      <div class="paper-q">${result.replace(/\n/g,'<br/>').replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\*(.*?)\*/g,'<b>$1</b>').replace(/^#{1,3}\s/gm,'')}</div>
+    </div>`;
+  examTab('preview');
+}
+function examTab(t){
+  document.getElementById('exam-gen').style.display=t==='gen'?'block':'none';
+  document.getElementById('exam-preview').style.display=t==='preview'?'block':'none';
+  document.querySelectorAll('#page-exampapers .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===(t==='gen'?0:1)));
+}
+function paperWA(){
+  if(!paperText)return toast('Pehle paper generate karein','#e74c3c');
+  const cls=document.getElementById('ep-cls').value,sub=document.getElementById('ep-sub').value,type=document.getElementById('ep-type').value;
+  const msg=`📝 *Al-Fareed Public School*\n*${type} - ${sub} (${cls})*\n\n${paperText.substring(0,1000)}...\n\n_Al-Fareed Public School, Tando Jam_`;
+  waOpen(msg);
+}
+
+// ============ AI CALL ============
+async function aiCall(prompt){
+  const key=db.groq||localStorage.getItem('groq_key')||'';
+  if(!key)return '❌ Groq API key nahi hai. Settings mein ja kar API key add karein.\n\nconsole.groq.com par free account banao aur key lao!';
+  try{
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],max_tokens:1500,temperature:0.7})
+    });
+    const data=await res.json();
+    if(data.error)return '❌ API Error: '+data.error.message;
+    return data.choices?.[0]?.message?.content||'❌ Response nahi aai';
+  }catch(e){return '❌ Network error: '+e.message;}
+}
+
+// ============ WHATSAPP ============
+function waOpen(msg){
+  const inst=db.wa.inst,tok=db.wa.tok;
+  if(inst&&tok){
+    // UltraMsg - would need server side but we fallback to wa.me
+    toast('WhatsApp khul raha hai...','#25D366');
+  }
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+function waOpenStu(stu,msg){
+  if(stu?.ph){const ph=stu.ph.replace(/[^0-9]/g,'');window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(msg),'_blank');}
+  else window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+
+// ============ SETTINGS ============
+function saveWA(){db.wa.inst=document.getElementById('wa-inst').value.trim();db.wa.tok=document.getElementById('wa-tok').value.trim();sv();toast('✅ WhatsApp config saved!');}
+function saveGroq(){db.groq=document.getElementById('groq-key').value.trim();localStorage.setItem('groq_key',db.groq);sv();toast('✅ API key saved! AI ready hai!');}
+function saveSch(){db.sch.principal=document.getElementById('principal').value;db.sch.phone=document.getElementById('sch-phone').value;sv();toast('✅ School info saved!');}
+function ldSettings(){
+  if(document.getElementById('wa-inst')){document.getElementById('wa-inst').value=db.wa.inst||'';document.getElementById('wa-tok').value=db.wa.tok||'';}
+  if(document.getElementById('groq-key')){document.getElementById('groq-key').value=db.groq||localStorage.getItem('groq_key')||'';}
+  if(document.getElementById('principal'))document.getElementById('principal').value=db.sch?.principal||'Sir Ghulam Hussain';
+}
+function clearData(){if(!confirm('Sab data delete?'))return;localStorage.removeItem('afdb4');localStorage.removeItem('groq_key');location.reload();}
+
+// ============ POPULATE SELECTS ============
+function popSelects(){
+  ['r-stu','f-stu','idc-stu'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const prev=el.value;
+    el.innerHTML='<option value="">-- Select --</option>'+db.stu.map(s=>`<option value="${s.id}">${s.name} (${s.cls})</option>`).join('');
+    el.value=prev;
+  });
+}
+
+// ============ INIT ============
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('att-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('hw-date').value=new Date().toISOString().split('T')[0];
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('f-month').value=months[new Date().getMonth()];
+  ld();
+});
+</script>
+</body>
+</html>
